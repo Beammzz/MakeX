@@ -11,7 +11,7 @@ from mbuild import power_expand_board
 
 class Kudchan:
     def __init__(self):
-        # self.encoder = encoder_motor_class("M6", "INDEX1")
+        self.encoder = encoder_motor_class("M6", "INDEX1")
 
     def auto(self, side):
         if side == "L":
