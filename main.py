@@ -31,10 +31,14 @@ class Kudchan:
 robot = Kudchan()
 # --- Main loop ---
 while True:
+    # Main Configurations
+    auto_side: str = "L"  # or "R"
+
+
     # Check Automode
     if power_manage_module.is_auto_mode():
         # ===== AUTO MODE =====
-        robot.auto(side="L")  # or side="R"
+        robot.auto(auto_side)
         pass
 
     else:
