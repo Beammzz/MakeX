@@ -11,10 +11,8 @@ from mbuild import power_expand_board
 
 class Kudchan:
     def __init__(self):
-        self.encoder_upleft = encoder_motor_class("M1", "INDEX1")
-        self.encoder_upright = encoder_motor_class("M2", "INDEX1")
-        self.encoder_downleft = encoder_motor_class("M3", "INDEX1")
-        self.encoder_downright = encoder_motor_class("M4", "INDEX1")
+        self.servo = smartservo_class("M1", "INDEX1")
+        self.encoder = encoder_motor_class("M1", "INDEX1")
 
     def auto(self, side):
         if side == "L":
@@ -30,6 +28,18 @@ class Kudchan:
 
 robot = Kudchan()
 # --- Main loop ---
+"""
+.-. .-')              _ .-') _              ('-. .-.   ('-.         .-') _  
+\  ( OO )            ( (  OO) )            ( OO )  /  ( OO ).-.    ( OO ) ) 
+,--. ,--. ,--. ,--.   \     .'_    .-----. ,--. ,--.  / . --. /,--./ ,--,'  
+|  .'   / |  | |  |   ,`'--..._)  '  .--./ |  | |  |  | \-.  \ |   \ |  |\  
+|      /, |  | | .-') |  |  \  '  |  |('-. |   .|  |.-'-'  |  ||    \|  | ) 
+|     ' _)|  |_|( OO )|  |   ' | /_) |OO  )|       | \| |_.'  ||  .     |/  
+|  .   \  |  | | `-' /|  |   / : ||  |`-'| |  .-.  |  |  .-.  ||  |\    |   
+|  |\   \('  '-'(_.-' |  '--'  /(_'  '--'\ |  | |  |  |  | |  ||  | \   |   
+`--' '--'  `-----'    `-------'    `-----' `--' `--'  `--' `--'`--'  `--'   
+"""
+
 while True:
     # Main Configurations
     auto_side: str = "L"  # or "R"
