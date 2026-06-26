@@ -1,31 +1,33 @@
-import novapi
 import time
+
+import novapi
+from mbuild import (
+    dual_rgb_sensor,
+    gamepad,
+    power_expand_board,
+    power_manage_module,
+    ranging_sensor,
+)
 from mbuild.encoder_motor import encoder_motor_class
 from mbuild.smartservo import smartservo_class
-from mbuild import gamepad
-from mbuild import dual_rgb_sensor
-from mbuild import ranging_sensor
-from mbuild import power_manage_module
-from mbuild import power_expand_board
 
 
 class Kudchan:
     def __init__(self):
-        self.wheel_left_up = encoder_motor_class("M1", "INDEX1")
-        self.wheel_left_bottom = encoder_motor_class("M2", "INDEX1")
-        self.wheel_right_up = encoder_motor_class("M3", "INDEX1")
-        self.wheel_right_bottom = encoder_motor_class("M4", "INDEX1")
+        self.wheel_upper_left = encoder_motor_class("M1", "INDEX1")
+        self.wheel_lower_left = encoder_motor_class("M2", "INDEX1")
+        self.wheel_upper_right = encoder_motor_class("M3", "INDEX1")
+        self.wheel_lower_right = encoder_motor_class("M4", "INDEX1")
 
         self.wheel_power = 50
 
     # Useful Functions
-    def set_wheel_power(self, left_up, left_bottom, right_up, right_bottom):
-        self.wheel_left_up.set_power(left_up)
-        self.wheel_left_bottom.set_power(left_bottom)
-        self.wheel_right_up.set_power(right_up)
-        self.wheel_right_bottom.set_power(right_bottom)
-        pass
-
+    # Upper left, Lower left, Upper right, Lower right
+    def set_wheel_power(self, ul, ll, ur, lr):
+        self.wheel_upper_left.set_power(ul)
+        self.wheel_lower_left.set_power(ll)
+        self.wheel_upper_right.set_power(ur)
+        self.wheel_lower_right.set_power(lr)
 
     # Auto Mode
     def auto(self, side):
@@ -33,23 +35,24 @@ class Kudchan:
             pass
         elif side == "R":
             pass
-        pass
 
     # Main Control with Controller
     def manual(self):
         wheel_power = self.wheel_power
         if gamepad.get_joystick("Ly") > 50:
-            self.set_wheel_power(wheel_power, wheel_power, -wheel_power, -wheel_power)
+            # Forward
+            self.set_wheel_power(ul=wheel_power,  ll=wheel_power,  ur=-wheel_power, lr=-wheel_power)
         elif gamepad.get_joystick("Ly") < -50:
-            self.set_wheel_power(-wheel_power, -wheel_power, wheel_power, wheel_power)
+            # Backward
+            self.set_wheel_power(ul=-wheel_power, ll=-wheel_power, ur=wheel_power,  lr=wheel_power)
         elif gamepad.get_joystick("Lx") > 50:
-            self.set_wheel_power(wheel_power, -wheel_power, wheel_power, -wheel_power)
+            # Strafe right
+            self.set_wheel_power(ul=wheel_power,  ll=-wheel_power, ur=wheel_power,  lr=-wheel_power)
         elif gamepad.get_joystick("Lx") < -50:
-            self.set_wheel_power(-wheel_power, wheel_power, -wheel_power, wheel_power)
+            # Strafe left
+            self.set_wheel_power(ul=-wheel_power, ll=wheel_power,  ur=-wheel_power, lr=wheel_power)
         else:
-            self.set_wheel_power(0, 0, 0, 0)
-        pass
-
+            self.set_wheel_power(ul=0, ll=0, ur=0, lr=0)
 
 
 robot = Kudchan()
@@ -70,16 +73,12 @@ while True:
     # Main Configurations
     auto_side = "L"  # or "R"
 
-
     # Check Automode
     if power_manage_module.is_auto_mode():
         # ===== AUTO MODE =====
         robot.auto(auto_side)
-        pass
-
     else:
         # ===== MANUAL MODE =====
         robot.manual()
-        pass
 
     time.sleep(0.05)
