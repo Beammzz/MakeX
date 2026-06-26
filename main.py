@@ -12,7 +12,7 @@ from mbuild.encoder_motor import encoder_motor_class
 from mbuild.smartservo import smartservo_class
 
 
-class Kudchan:
+class Guzzchan:
     def __init__(self):
         self.wheel_upper_left = encoder_motor_class("M1", "INDEX1")
         self.wheel_lower_left = encoder_motor_class("M2", "INDEX1")
@@ -39,34 +39,45 @@ class Kudchan:
     # Main Control with Controller
     def manual(self):
         wheel_power = self.wheel_power
+        # Control movement
         if gamepad.get_joystick("Ly") > 50:
             # Forward
             self.set_wheel_power(ul=wheel_power,  ll=wheel_power,  ur=-wheel_power, lr=-wheel_power)
         elif gamepad.get_joystick("Ly") < -50:
             # Backward
             self.set_wheel_power(ul=-wheel_power, ll=-wheel_power, ur=wheel_power,  lr=wheel_power)
+        # เข้าหมดเลย
         elif gamepad.get_joystick("Lx") > 50:
             # Strafe right
-            self.set_wheel_power(ul=wheel_power,  ll=-wheel_power, ur=wheel_power,  lr=-wheel_power)
+            self.set_wheel_power(ul=-wheel_power,  ll=wheel_power, ur=wheel_power,  lr=-wheel_power)
+        # ออกหมดเลย
         elif gamepad.get_joystick("Lx") < -50:
             # Strafe left
-            self.set_wheel_power(ul=-wheel_power, ll=wheel_power,  ur=-wheel_power, lr=wheel_power)
+            self.set_wheel_power(ul=wheel_power, ll=-wheel_power,  ur=-wheel_power, lr=wheel_power)
         else:
             self.set_wheel_power(ul=0, ll=0, ur=0, lr=0)
+            
+        # Control rotation
+        if gamepad.get_joystick("Rx") > 50:
+            # Rotate right
+            self.set_wheel_power(ul=-wheel_power,  ll=-wheel_power,  ur=-wheel_power,  lr=-wheel_power)
+        elif gamepad.get_joystick("Rx") < -50:
+            # Rotate left
+            self.set_wheel_power(ul=wheel_power, ll=wheel_power, ur=wheel_power, lr=wheel_power)
 
 
-robot = Kudchan()
+robot = Guzzchan()
 # --- Main loop ---
 """
-.-. .-')              _ .-') _              ('-. .-.   ('-.         .-') _  
-\  ( OO )            ( (  OO) )            ( OO )  /  ( OO ).-.    ( OO ) ) 
-,--. ,--. ,--. ,--.   \     .'_    .-----. ,--. ,--.  / . --. /,--./ ,--,'  
-|  .'   / |  | |  |   ,`'--..._)  '  .--./ |  | |  |  | \-.  \ |   \ |  |\  
-|      /, |  | | .-') |  |  \  '  |  |('-. |   .|  |.-'-'  |  ||    \|  | ) 
-|     ' _)|  |_|( OO )|  |   ' | /_) |OO  )|       | \| |_.'  ||  .     |/  
-|  .   \  |  | | `-' /|  |   / : ||  |`-'| |  .-.  |  |  .-.  ||  |\    |   
-|  |\   \('  '-'(_.-' |  '--'  /(_'  '--'\ |  | |  |  |  | |  ||  | \   |   
-`--' '--'  `-----'    `-------'    `-----' `--' `--'  `--' `--'`--'  `--'   
+                           .-') _    .-') _             ('-. .-.   ('-.         .-') _  
+                          (  OO) )  (  OO) )           ( OO )  /  ( OO ).-.    ( OO ) ) 
+  ,----.    ,--. ,--.   ,(_)----. ,(_)----.    .-----. ,--. ,--.  / . --. /,--./ ,--,'  
+ '  .-./-') |  | |  |   |       | |       |   '  .--./ |  | |  |  | \-.  \ |   \ |  |\  
+ |  |_( O- )|  | | .-') '--.   /  '--.   /    |  |('-. |   .|  |.-'-'  |  ||    \|  | ) 
+ |  | .--, \|  |_|( OO )(_/   /   (_/   /    /_) |OO  )|       | \| |_.'  ||  .     |/  
+(|  | '. (_/|  | | `-' / /   /___  /   /___  ||  |`-'| |  .-.  |  |  .-.  ||  |\    |   
+ |  '--'  |('  '-'(_.-' |        ||        |(_'  '--'\ |  | |  |  |  | |  ||  | \   |   
+  `------'   `-----'    `--------'`--------'   `-----' `--' `--'  `--' `--'`--'  `--'   
 """
 
 while True:
@@ -78,6 +89,8 @@ while True:
         # ===== AUTO MODE =====
         robot.auto(auto_side)
     else:
+        print(robot.wheel_upper_left.get_power())
+        print("-" * 20)
         # ===== MANUAL MODE =====
         robot.manual()
 
