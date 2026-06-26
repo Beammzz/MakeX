@@ -89,8 +89,6 @@ while True:
         # ===== AUTO MODE =====
         robot.auto(auto_side)
     else:
-        print(robot.wheel_upper_left.get_power())
-        print("-" * 20)
         # ===== MANUAL MODE =====
         robot.manual()
 
