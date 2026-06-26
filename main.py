@@ -11,6 +11,17 @@ from mbuild import (
 from mbuild.encoder_motor import encoder_motor_class
 from mbuild.smartservo import smartservo_class
 
+print(r"""
+                           .-') _    .-') _             ('-. .-.   ('-.         .-') _  
+                          (  OO) )  (  OO) )           ( OO )  /  ( OO ).-.    ( OO ) ) 
+  ,----.    ,--. ,--.   ,(_)----. ,(_)----.    .-----. ,--. ,--.  / . --. /,--./ ,--,'  
+ '  .-./-') |  | |  |   |       | |       |   '  .--./ |  | |  |  | \-.  \ |   \ |  |\  
+ |  |_( O- )|  | | .-') '--.   /  '--.   /    |  |('-. |   .|  |.-'-'  |  ||    \|  | ) 
+ |  | .--, \|  |_|( OO )(_/   /   (_/   /    /_) |OO  )|       | \| |_.'  ||  .     |/  
+(|  | '. (_/|  | | `-' / /   /___  /   /___  ||  |`-'| |  .-.  |  |  .-.  ||  |\    |   
+ |  '--'  |('  '-'(_.-' |        ||        |(_'  '--'\ |  | |  |  |  | |  ||  | \   |   
+  `------'   `-----'    `--------'`--------'   `-----' `--' `--'  `--' `--'`--'  `--'   
+""")
 
 class Guzzchan:
     def __init__(self):
@@ -46,11 +57,9 @@ class Guzzchan:
         elif gamepad.get_joystick("Ly") < -50:
             # Backward
             self.set_wheel_power(ul=-wheel_power, ll=-wheel_power, ur=wheel_power,  lr=wheel_power)
-        # เข้าหมดเลย
         elif gamepad.get_joystick("Lx") > 50:
             # Strafe right
             self.set_wheel_power(ul=-wheel_power,  ll=wheel_power, ur=wheel_power,  lr=-wheel_power)
-        # ออกหมดเลย
         elif gamepad.get_joystick("Lx") < -50:
             # Strafe left
             self.set_wheel_power(ul=wheel_power, ll=-wheel_power,  ur=-wheel_power, lr=wheel_power)
@@ -67,19 +76,9 @@ class Guzzchan:
 
 
 robot = Guzzchan()
-# --- Main loop ---
-"""
-                           .-') _    .-') _             ('-. .-.   ('-.         .-') _  
-                          (  OO) )  (  OO) )           ( OO )  /  ( OO ).-.    ( OO ) ) 
-  ,----.    ,--. ,--.   ,(_)----. ,(_)----.    .-----. ,--. ,--.  / . --. /,--./ ,--,'  
- '  .-./-') |  | |  |   |       | |       |   '  .--./ |  | |  |  | \-.  \ |   \ |  |\  
- |  |_( O- )|  | | .-') '--.   /  '--.   /    |  |('-. |   .|  |.-'-'  |  ||    \|  | ) 
- |  | .--, \|  |_|( OO )(_/   /   (_/   /    /_) |OO  )|       | \| |_.'  ||  .     |/  
-(|  | '. (_/|  | | `-' / /   /___  /   /___  ||  |`-'| |  .-.  |  |  .-.  ||  |\    |   
- |  '--'  |('  '-'(_.-' |        ||        |(_'  '--'\ |  | |  |  |  | |  ||  | \   |   
-  `------'   `-----'    `--------'`--------'   `-----' `--' `--'  `--' `--'`--'  `--'   
-"""
+debug = True
 
+# --- Main loop ---
 while True:
     # Main Configurations
     auto_side = "L"  # or "R"

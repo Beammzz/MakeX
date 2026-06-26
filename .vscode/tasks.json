@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "NovaPi: Deploy & Serial Monitor",
+      "type": "shell",
+      "command": "python ../NovaPi/scripts/firefly_upload.py -p COM8 -i main.py -o /main.py; if ($?) { mpremote connect COM8 repl }",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      }
+    }
+  ]
+}
