@@ -2,5 +2,5 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM7"
+  "novapi.port": "COM8"
 }

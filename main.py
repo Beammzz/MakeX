@@ -29,9 +29,9 @@ class Guzzchan:
         self.wheel_lower_left = encoder_motor_class("M2", "INDEX1")
         self.wheel_upper_right = encoder_motor_class("M3", "INDEX1")
         self.wheel_lower_right = encoder_motor_class("M4", "INDEX1")
+        self.shooter_servo = smartservo_class("M5", "INDEX1")
 
         self.wheel_power = 50
-        
         
         # Init Value
         self.runauto = False
@@ -43,7 +43,7 @@ class Guzzchan:
         self.wheel_lower_left.set_power(ll)
         self.wheel_upper_right.set_power(ur)
         self.wheel_lower_right.set_power(lr)
-        
+
     def move_forward(self, power):
         self.set_wheel_power(ul=power,  ll=power,  ur=-power, lr=-power)
         
@@ -55,6 +55,18 @@ class Guzzchan:
         
     def move_sideway_left(self, power):
         self.set_wheel_power(ul=power, ll=-power,  ur=power,  lr=-power)
+        
+    def rotate_right(self, power):
+        self.set_wheel_power(ul=-power, ll=-power, ur=-power, lr=-power)
+    
+    def rotate_left(self, power):
+        self.set_wheel_power(ul=power, ll=power, ur=power, lr=power)
+        
+    def stop(self):
+        self.wheel_upper_right.stop()
+        self.wheel_upper_left.stop()
+        self.wheel_lower_right.stop()
+        self.wheel_lower_left.stop()
 
     # Auto Mode
     def auto(self, side):
@@ -63,8 +75,7 @@ class Guzzchan:
                 self.wheel_upper_left.move(5000, 100)
             else:
                 self.wheel_upper_right.move(500, 100)
-            self.runauto = True
-        
+            self.runauto = True    
 
     # Main Control with Controller
     def manual(self):
@@ -78,20 +89,29 @@ class Guzzchan:
             self.move_sideway_right(wheel_power)
         elif gamepad.get_joystick("Lx") < -50:
             self.move_sideway_left(wheel_power)
-        else:
-            self.set_wheel_power(ul=0, ll=0, ur=0, lr=0)
-            
         # Control rotation
-        if gamepad.get_joystick("Rx") > 50:
-            # Rotate right
-            self.set_wheel_power(ul=-wheel_power,  ll=-wheel_power,  ur=-wheel_power,  lr=-wheel_power)
+        elif gamepad.get_joystick("Rx") > 50:
+            self.rotate_right(wheel_power)
         elif gamepad.get_joystick("Rx") < -50:
-            # Rotate left
-            self.set_wheel_power(ul=wheel_power, ll=wheel_power, ur=wheel_power, lr=wheel_power)
-
+            self.rotate_left(wheel_power)
+        else:
+            self.stop()
+            
+        # Control Buttons
+        # Up
+        if gamepad.is_key_pressed("N2"):
+            self.shooter_servo.move_to(-30, 300)
+        # Zero
+        if gamepad.is_key_pressed("≡"):
+            self.shooter_servo.move_to(0, 300)
+        # Down
+        if gamepad.is_key_pressed("N3"):
+            self.shooter_servo.move_to(30, 300)
 
 robot = Guzzchan()
 debug_auto = False
+
+robot.shooter_servo.move_to(0, 300)
 
 # --- Main loop ---
 while True:
@@ -106,6 +126,7 @@ while True:
     else:
         # ===== MANUAL MODE =====
         robot.manual()
-        print(robot.wheel_upper_left.get_value("angle"))
-
+        print(robot.shooter_servo_level)
+        print(robot.shooter_servo.get_value("angle"))
+        print("-"*20)
     time.sleep(0.05)
