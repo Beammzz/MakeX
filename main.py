@@ -126,7 +126,6 @@ while True:
     else:
         # ===== MANUAL MODE =====
         robot.manual()
-        print(robot.shooter_servo_level)
         print(robot.shooter_servo.get_value("angle"))
         print("-"*20)
     time.sleep(0.05)
