@@ -108,6 +108,13 @@ class Guzzchan:
         if gamepad.is_key_pressed("N3"):
             self.shooter_servo.move_to(30, 300)
 
+        if gamepad.is_key_pressed("+"):
+            power_expand_board.set_power("BL1", 35)
+            power_expand_board.set_power("BL2", 35)
+        else:
+            power_expand_board.set_power("BL1", 0)
+            power_expand_board.set_power("BL2", 0)
+
 robot = Guzzchan()
 debug_auto = False
 
