@@ -3,8 +3,10 @@ import time
 from mbuild import (
     power_expand_board,
 )
+from mbuild.smartservo import smartservo_class
 
 is_toggle = False
+shooter_servo = smartservo_class("M5", "INDEX1")
     
 def toggle():
     global is_toggle
@@ -18,3 +20,5 @@ def toggle():
         power_expand_board.set_power("BL2", 35)
         is_toggle = True
         time.sleep(0.02)
+        
+        
