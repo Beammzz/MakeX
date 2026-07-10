@@ -126,6 +126,4 @@ while True:
     else:
         # ===== MANUAL MODE =====
         robot.manual()
-        print("yaw:", novapi.get_yaw())
-        print("-"*20)
     time.sleep(0.05)
