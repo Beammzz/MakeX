@@ -2,14 +2,12 @@ import time
 
 import novapi
 from mbuild import (
-    dual_rgb_sensor,
     gamepad,
-    power_expand_board,
     power_manage_module,
-    ranging_sensor,
 )
 from mbuild.encoder_motor import encoder_motor_class
 from mbuild.smartservo import smartservo_class
+import brushless
 
 print(r"""
                            .-') _    .-') _             ('-. .-.   ('-.         .-') _  
@@ -109,11 +107,8 @@ class Guzzchan:
             self.shooter_servo.move_to(30, 300)
 
         if gamepad.is_key_pressed("+"):
-            power_expand_board.set_power("BL1", 35)
-            power_expand_board.set_power("BL2", 35)
-        else:
-            power_expand_board.set_power("BL1", 0)
-            power_expand_board.set_power("BL2", 0)
+            brushless.toggle()
+            
 
 robot = Guzzchan()
 debug_auto = False
@@ -133,4 +128,4 @@ while True:
     else:
         # ===== MANUAL MODE =====
         robot.manual()
-    time.sleep(0.05)
+    time.sleep(0.02)
