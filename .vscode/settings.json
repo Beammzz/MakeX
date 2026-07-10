@@ -3,7 +3,11 @@
     "*.md": "vscode.markdown.preview.editor"
   },
   "novapi.port": "COM7",
+  "python.analysis.stubPath": "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingModuleSource": "none"
+  },
   "python.analysis.extraPaths": [
-    "C:\\Users\\Sorra\\VSCode\\NovaPi\\stubs"
+    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs"
   ]
 }
