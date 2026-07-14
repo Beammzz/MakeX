@@ -2,11 +2,14 @@ import time
 
 import novapi
 from mbuild import (
+    dual_rgb_sensor,
     gamepad,
+    power_expand_board,
     power_manage_module,
+    ranging_sensor,
 )
 from mbuild.encoder_motor import encoder_motor_class
-import shooter
+from mbuild.smartservo import smartservo_class
 
 print(r"""
                            .-') _    .-') _             ('-. .-.   ('-.         .-') _  
@@ -20,14 +23,49 @@ print(r"""
   `------'   `-----'    `--------'`--------'   `-----' `--' `--'  `--' `--'`--'  `--'   
 """)
 
+# Handle the wheel encoder and movement
+class Wheel:
+    def __init__(self):
+        self.wheel_upper_left = encoder_motor_class("M1", "INDEX1")
+        self.wheel_lower_left = encoder_motor_class("M2", "INDEX1")
+        self.wheel_upper_right = encoder_motor_class("M3", "INDEX1")
+        self.wheel_lower_right = encoder_motor_class("M4", "INDEX1")
+        
+
 class Guzzchan:
-    def __init__(self):  
+    def __init__(self):
+        self.shooter_servo = smartservo_class("M5", "INDEX1")
+
+        self.wheel_power = 50
+        
         # Init Value
         self.runauto = False
 
     # Useful Functions
     # Upper left, Lower left, Upper right, Lower right
+    def set_wheel_power(self, ul, ll, ur, lr):
+        self.wheel_upper_left.set_power(ul)
+        self.wheel_lower_left.set_power(ll)
+        self.wheel_upper_right.set_power(ur)
+        self.wheel_lower_right.set_power(lr)
+
+    def move_forward(self, power):
+        self.set_wheel_power(ul=power,  ll=power,  ur=-power, lr=-power)
+        
+    def move_backward(self, power):
+        self.set_wheel_power(ul=-power, ll=-power, ur=power,  lr=power)
+        
+    def move_sideway_right(self, power):
+        self.set_wheel_power(ul=-power, ll=power,  ur=-power, lr=power)
+        
+    def move_sideway_left(self, power):
+        self.set_wheel_power(ul=power, ll=-power,  ur=power,  lr=-power)
+        
+    def rotate_right(self, power):
+        self.set_wheel_power(ul=-power, ll=-power, ur=-power, lr=-power)
     
+    def rotate_left(self, power):
+        self.set_wheel_power(ul=power, ll=power, ur=power, lr=power)
         
     def stop(self):
         self.wheel_upper_right.stop()
@@ -76,8 +114,11 @@ class Guzzchan:
             self.shooter_servo.move_to(30, 300)
 
         if gamepad.is_key_pressed("+"):
-            shooter.toggle()
-            
+            power_expand_board.set_power("BL1", 30)
+            power_expand_board.set_power("BL2", 30)
+        else:
+            power_expand_board.set_power("BL1", 0)
+            power_expand_board.set_power("BL2", 0)
 
 robot = Guzzchan()
 debug_auto = False
@@ -97,4 +138,4 @@ while True:
     else:
         # ===== MANUAL MODE =====
         robot.manual()
-    time.sleep(0.02)
+    time.sleep(0.05)

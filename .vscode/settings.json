@@ -2,12 +2,11 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM8",
-  "python.analysis.stubPath": "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
-  "python.analysis.diagnosticSeverityOverrides": {
-    "reportMissingModuleSource": "none"
-  },
+  "novapi.port": "COM13",
   "python.analysis.extraPaths": [
     "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs"
-  ]
+  ],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingModuleSource": "none"
+  }
 }
