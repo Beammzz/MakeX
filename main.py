@@ -77,7 +77,8 @@ class Wheel:
         self.upper_right.stop()
         self.lower_right.stop()
 
-    # ---- holonomic mix (optional, use this instead of the elif-chain) ----
+    # ---- holonomic mix ----
+    # If Bung Guzz want to mix movement between movement and rotation
     def drive(self, forward, strafe, turn):
         """All three axes at once. Each arg is -100..100."""
         ul = forward + strafe + turn
@@ -94,9 +95,9 @@ class Wheel:
 #  Shooter (servo aim + flywheels)
 # ============================================================
 class Shooter:
-    ANGLE_UP = -30
+    ANGLE_UP = -20
     ANGLE_MID = 0
-    ANGLE_DOWN = 30
+    ANGLE_DOWN = 20
     SERVO_SPEED = 300
 
     def __init__(self, servo_port="M5"):
@@ -115,7 +116,7 @@ class Shooter:
     def aim_down(self):
         self.aim(self.ANGLE_DOWN)
 
-    def spin(self, on, power=30):
+    def spin(self, on, power=18):
         # only touch the board when the state actually changes
         if on == self._spinning:
             return
@@ -129,7 +130,7 @@ class Feeder:
     def __init__(self):
         self.feeder_toggle = False
         
-    def toggle_feeder(self):
+    def toggle(self):
         self.feeder_toggle = not self.feeder_toggle
         if self.feeder_toggle:
             power_expand_board.set_power("DC1", 30)  # Turn on feeder
@@ -182,7 +183,7 @@ class Guzzchan:
         if gamepad.is_key_pressed("N3"):
             self.shooter.aim_down()
         if gamepad.is_key_pressed("L1"):
-            self.feeder.toggle_feeder()
+            self.feeder.toggle()
 
         self.shooter.spin(gamepad.is_key_pressed("+"))
 
