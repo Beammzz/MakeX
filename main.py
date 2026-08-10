@@ -28,7 +28,7 @@ print(r"""
 class Wheel:
     """4x mecanum wheels. Right side is mounted mirrored, so its sign is flipped."""
 
-    def __init__(self, default_power=50):
+    def __init__(self, default_power=40):
         self.upper_left = encoder_motor_class("M1", "INDEX1")
         self.lower_left = encoder_motor_class("M2", "INDEX1")
         self.upper_right = encoder_motor_class("M3", "INDEX1")
@@ -116,13 +116,13 @@ class Shooter:
     def aim_down(self):
         self.aim(self.ANGLE_DOWN)
 
-    def spin(self, on, power=18):
+    def spin(self, on, power=30):
         # only touch the board when the state actually changes
         if on == self._spinning:
             return
         value = power if on else 0
         power_expand_board.set_power("BL1", value)
-        power_expand_board.set_power("BL2", value)
+        power_expand_board.set_power("BL2", 15)
         self._spinning = on
         
 

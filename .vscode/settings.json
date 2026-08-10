@@ -2,11 +2,18 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM13",
+  "novapi.port": "COM7",
+  // "python" on PATH here is the 0-byte Microsoft Store alias in WindowsApps,
+  // which VS Code cannot launch as a terminal ("File not found: )"). This is the
+  // real 3.14.6 interpreter, with pyserial 3.5 installed.
+  "novapi.pythonPath": "C:\\Users\\Sorra\\AppData\\Local\\Python\\bin\\python.exe",
   "python.analysis.extraPaths": [
-    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs"
+    "c:\\Users\\Sorra\\Projects\\NovaPi\\stubs",
+    "c:\\Users\\Sorra\\Projects\\NovaPi\\scripts"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"
-  }
+  },
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.stubPath": "c:\\Users\\Sorra\\Projects\\NovaPi\\stubs\\_stdlib"
 }
