@@ -100,8 +100,8 @@ class Shooter:
     ANGLE_DOWN = 20
     SERVO_SPEED = 300
 
-    def __init__(self, servo_port="M5"):
-        self.servo = smartservo_class(servo_port, "INDEX1")
+    def __init__(self):
+        self.servo = smartservo_class("M5", "INDEX1")
         self._spinning = False
 
     def aim(self, angle, speed=None):
@@ -146,7 +146,7 @@ class Guzzchan:
 
     def __init__(self):
         self.wheel = Wheel(default_power=50)
-        self.shooter = Shooter("M5")
+        self.shooter = Shooter()
         self.feeder = Feeder()
         self.auto_done = False
 

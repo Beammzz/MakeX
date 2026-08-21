@@ -2,18 +2,23 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM7",
+  "novapi.port": "00:1B:10:B1:0A:94",
   // "python" on PATH here is the 0-byte Microsoft Store alias in WindowsApps,
   // which VS Code cannot launch as a terminal ("File not found: )"). This is the
   // real 3.14.6 interpreter, with pyserial 3.5 installed.
   "novapi.pythonPath": "C:\\Users\\Sorra\\AppData\\Local\\Python\\bin\\python.exe",
+  // Board-only time.pyi (sleep_ms/ticks_diff) was shadowing real time.time()
+  // for PC-side scripts too (novapi_live.py, novapi_teleop.py). main.py only
+  // calls time.sleep(), which both stubs have, so nothing board-side loses
+  // checking by turning this off.
+  "novapi.stubs.shadowStdlib": false,
   "python.analysis.extraPaths": [
     "c:\\Users\\Sorra\\Projects\\NovaPi\\stubs",
-    "c:\\Users\\Sorra\\Projects\\NovaPi\\scripts"
+    "c:\\Users\\Sorra\\Projects\\NovaPi\\scripts",
+    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"
   },
-  "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.stubPath": "c:\\Users\\Sorra\\Projects\\NovaPi\\stubs\\_stdlib"
+  "python.analysis.typeCheckingMode": "basic"
 }
