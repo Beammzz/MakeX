@@ -95,7 +95,7 @@ class Wheel:
 #  Shooter (servo aim + flywheels)
 # ============================================================
 class Shooter:
-    ANGLE_UP = -20
+    ANGLE_UP = -24
     ANGLE_MID = 0
     ANGLE_DOWN = 20
     SERVO_SPEED = 300
@@ -116,26 +116,39 @@ class Shooter:
     def aim_down(self):
         self.aim(self.ANGLE_DOWN)
 
-    def spin(self, on, power=30):
+    def spin(self, on, power=17):
         # only touch the board when the state actually changes
         if on == self._spinning:
             return
         value = power if on else 0
         power_expand_board.set_power("BL1", value)
-        power_expand_board.set_power("BL2", 15)
+        power_expand_board.set_power("BL2", value)
         self._spinning = on
         
 
 class Feeder:
     def __init__(self):
-        self.feeder_toggle = False
+        self.feeder_toggle_ball = False
+        self.feeder_toggle_block = False
         
-    def toggle(self):
-        self.feeder_toggle = not self.feeder_toggle
-        if self.feeder_toggle:
-            power_expand_board.set_power("DC1", 30)  # Turn on feeder
+    def toggle_ball(self):
+        self.feeder_toggle_ball = not self.feeder_toggle_ball
+        if self.feeder_toggle_ball:
+            power_expand_board.set_power("DC6", 30)  # Turn on feeder
         else:
-            power_expand_board.set_power("DC1", 0)   # Turn off feeder
+            power_expand_board.set_power("DC6", 0)   # Turn off feeder
+
+    def toggle_block(self, button=""):
+        self.feeder_toggle_block = not self.feeder_toggle_block
+        if self.feeder_toggle_block and button == "L1":
+            power_expand_board.set_power("DC1", 75)  # Turn on block feeder
+            power_expand_board.set_power("DC3", 75)   # Turn on another feeder
+        elif self.feeder_toggle_block and button == "R1":
+            power_expand_board.set_power("DC1", -75)  # Turn on block feeder
+            power_expand_board.set_power("DC3", -75)   # Turn on another feeder
+        else:
+            power_expand_board.set_power("DC1", 0)   # Turn off block feeder
+            power_expand_board.set_power("DC3", 0)   # Turn off another feeder
 
 
 # ============================================================
@@ -183,7 +196,11 @@ class Guzzchan:
         if gamepad.is_key_pressed("N3"):
             self.shooter.aim_down()
         if gamepad.is_key_pressed("L1"):
-            self.feeder.toggle()
+            self.feeder.toggle_block("L1")
+            time.sleep(0.1)
+        if gamepad.is_key_pressed("R1"):
+            self.feeder.toggle_block("R1")
+            time.sleep(0.1)
 
         self.shooter.spin(gamepad.is_key_pressed("+"))
 
