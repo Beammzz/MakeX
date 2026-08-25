@@ -19,7 +19,9 @@
   // every stub fix.
   "python.analysis.extraPaths": [
     "c:\\Users\\Windows 11\\Downloads\\Compressed\\NovaPi\\stubs",
-    "c:\\Users\\Windows 11\\Downloads\\Compressed\\NovaPi\\scripts"
+    "c:\\Users\\Windows 11\\Downloads\\Compressed\\NovaPi\\scripts",
+    "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/stubs",
+    "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"
