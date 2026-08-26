@@ -96,7 +96,6 @@ class conveyor:
         self.sweeper_lift_servo = smartservo_class("M6", "INDEX1")
 
         # Toggle State
-        self.is_block_convey_toggled = False
         self.is_ball_convey_toggled = False
         self.is_midway_convey_toggled = False
         self.block_convey_servo_toggled = False
@@ -104,18 +103,16 @@ class conveyor:
         self.is_lift_sweeper_toggled = False
 
     def block_convey(self, reverse=False):
-        if not self.is_block_convey_toggled:
-            if reverse:
-                power_expand_board.set_power(self.block_a, 100)
-                power_expand_board.set_power(self.block_b, -100)
-            else:
-                power_expand_board.set_power(self.block_a, -100)
-                power_expand_board.set_power(self.block_b, 100)
-            self.is_block_convey_toggled = True
+        if reverse:
+            power_expand_board.set_power(self.block_a, 100)
+            power_expand_board.set_power(self.block_b, -100)
         else:
-            power_expand_board.set_power(self.block_a, 0)
-            power_expand_board.set_power(self.block_b, 0)
-            self.is_block_convey_toggled = False
+            power_expand_board.set_power(self.block_a, -100)
+            power_expand_board.set_power(self.block_b, 100)
+
+    def block_convey_stop(self):
+        power_expand_board.set_power(self.block_a, 0)
+        power_expand_board.set_power(self.block_b, 0)
 
     def ball_convey(self, reverse=False):
         if not self.is_ball_convey_toggled:
@@ -255,13 +252,13 @@ class Guzzchan:
             self.conveyor.toggle_sweeper()
             time.sleep(0.1)
 
-        if self._pressed("L1"):
+        # L1/R1 กดค้างเพื่อเดินสายพานบล็อก ปล่อยแล้วหยุด -- ไม่ใช่ toggle จึงอ่านสถานะปุ่มตรง ๆ
+        if gamepad.is_key_pressed("L1"):
             self.conveyor.block_convey()
-            time.sleep(0.1)
-
-        if self._pressed("R1"):
+        elif gamepad.is_key_pressed("R1"):
             self.conveyor.block_convey(reverse=True)
-            time.sleep(0.1)
+        else:
+            self.conveyor.block_convey_stop()
 
         if self._pressed("L2"):
             self.conveyor.midway_convey()
