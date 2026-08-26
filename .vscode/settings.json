@@ -14,6 +14,12 @@
   // calls time.sleep(), which both stubs have, so nothing board-side loses
   // checking by turning this off.
   "novapi.stubs.shadowStdlib": false,
+  // scripts/*.py หา live.py จาก ../NovaPi ข้าง ๆ repo ซึ่งไม่มีในเครื่องนี้ --
+  // ชี้ไปที่ scripts/ ของ extension ที่ติดตั้งไว้แทน ตัวแปรนี้ VS Code ใส่ให้ทุก
+  // terminal รวมถึงที่ "NovaPi: Run Script" เปิด (extension เองไม่ได้ตั้งให้)
+  "terminal.integrated.env.windows": {
+    "NOVAPI_SCRIPTS": "C:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
+  },
   // Only the checked-out repo. Do NOT re-add the installed extension's stubs
   // folder: first match wins, so a stale copy ahead of these silently reverts
   // every stub fix.
@@ -21,7 +27,9 @@
     "c:\\Users\\Windows 11\\Downloads\\Compressed\\NovaPi\\stubs",
     "c:\\Users\\Windows 11\\Downloads\\Compressed\\NovaPi\\scripts",
     "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/stubs",
-    "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts"
+    "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts",
+    "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
+    "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"

@@ -21,8 +21,10 @@ method names, parameter ranges, and sign conventions instead of guessing.
 - `Note.md` — current field tuning values (servo offsets, brushless power).
 
 ## Conventions
-- All tuning lives in one CONFIG block at the top. If you're editing a number
-  below the "ROBOT CODE" divider, the knob is missing — add it to CONFIG.
+- No central CONFIG block. That convention is gone: hoisting every number to
+  the top of the file made field debugging much slower, because a value you
+  wanted to change was never next to the code it affected. Keep tuning
+  parameters in the class that uses them (see `Wheel` and `Shooter`).
 - Motor direction is a sign in the power table, handled in exactly one place.
 - Comments in Thai; clear and concise, say what the code does.
 - Don't overengineer. Match existing formatting, naming, and comment density.

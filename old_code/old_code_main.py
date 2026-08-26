@@ -296,6 +296,7 @@ class DCBank:
         is covered here without a second edit."""
         for name in DC_CHANNEL:
             self.set(name, 0)
+            
 
 
 class Shooter:
