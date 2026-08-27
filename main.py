@@ -132,15 +132,16 @@ class conveyor:
             self.is_ball_convey_toggled = False
 
     def midway_convey(self, reverse=False):
-        if not self.is_midway_convey_toggled:
-            if reverse:
-                power_expand_board.set_power(self.convey_midway, -100)
-            else:
-                power_expand_board.set_power(self.convey_midway, 100)
-            self.is_midway_convey_toggled = True
+        if reverse:
+            power_expand_board.set_power(self.convey_midway, -50)
+            power_expand_board.set_power(self.convey_lower, 100)
         else:
-            power_expand_board.set_power(self.convey_midway, 0)
-            self.is_midway_convey_toggled = False
+            power_expand_board.set_power(self.convey_midway, 50)
+            power_expand_board.set_power(self.convey_lower, -100)
+
+    def midway_convey_stop(self):
+        power_expand_board.set_power(self.convey_midway, 0)
+        power_expand_board.set_power(self.convey_lower, 0)
 
     def block_convey_servo_move(self):
         if not self.block_convey_servo_toggled:
@@ -187,7 +188,7 @@ class Shooter:
 
         # Shooter Servo Tuning Parameters
         self.ANGLE_HOME = 0
-        self.ANGLE_AIM = -24
+        self.ANGLE_AIM = -22
         self.ANGLE_SPEED = 50
 
     def set_shooter_angle(self, angle):
@@ -260,13 +261,12 @@ class Guzzchan:
         else:
             self.conveyor.block_convey_stop()
 
-        if self._pressed("L2"):
+        if gamepad.is_key_pressed("L2"):
             self.conveyor.midway_convey()
-            time.sleep(0.1)
-
-        if self._pressed("R2"):
+        elif gamepad.is_key_pressed("R2"):
             self.conveyor.midway_convey(reverse=True)
-            time.sleep(0.1)
+        else:
+            self.conveyor.midway_convey_stop()
 
         if self._pressed("N3"):
             self.shooter.toggle_shooter_angle()
