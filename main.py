@@ -27,17 +27,19 @@ class Wheel:
         self.upper_right = encoder_motor_class("M3", "INDEX1")
         self.lower_right = encoder_motor_class("M4", "INDEX1")
         
-        # Holomix Tuning Parameters
+        # Holomix Tuning PParameters
         self.DEADZONE = 30
         self.STRAFE_GAIN = 1
-        self.MAX_POWER = 80
-        self.TRIM_UL = 1.00
-        self.TRIM_LL = 1.00
-        self.TRIM_UR = 1.00
-        self.TRIM_LR = 1.00
-        
+        self.MAX_POWER = 75
 
-    # Deadzone Function for Holomix
+        # ค่าเทรมแยกตามทิศ (ul, ll, ur, lr) แก้ทีละทิศได้เลยตอนจูนหน้างาน
+        self.TRIM_FORWARD  = (1.00, 1.00, 1.00, 1.00)
+        self.TRIM_BACKWARD = (1.00, 1.00, 1.00, 1.00)
+        self.TRIM_SLIDE_L  = (1.00, 0.7, 0.7, 0.7)
+        self.TRIM_SLIDE_R  = (1.00, 1.00, 0.7, 0.7)
+        self.TRIM_TURN_L   = (1.00, 0.7, 0.7, 0.7)
+        self.TRIM_TURN_R   = (1.00, 0.7, 0.7, 0.7)
+        
     def _dz(self, v):
         if abs(v) < self.DEADZONE:
             return 0
@@ -51,7 +53,7 @@ class Wheel:
         self.lower_left.set_power(ll)
         self.upper_right.set_power(ur)
         self.lower_right.set_power(lr)
-    
+
     def stop(self):
         self.set_power(0, 0, 0, 0)
         
@@ -60,12 +62,16 @@ class Wheel:
         vy = self._dz(ly)
         vw = -self._dz(rx)
 
-        # ล้อฝั่งขวาติดกลับด้าน จึงติดลบที่ ur/lr -- ทั้งไฟล์มีที่เดียวตรงนี้
-        # ถ้าไม่มี vy จะกลายเป็นหมุนและ vw จะกลายเป็นเดินหน้า (Ly หมุน, Rx เดิน)
-        ul = (vy + vx + vw) * self.TRIM_UL
-        ll = (vy - vx + vw) * self.TRIM_LL
-        ur = -(vy - vx - vw) * self.TRIM_UR
-        lr = -(vy + vx - vw) * self.TRIM_LR
+        # เลือกตารางเทรมตามทิศที่สั่งอยู่ (vx > 0 = สไลด์ซ้าย, vw > 0 = หมุนซ้าย)
+        ty = self.TRIM_FORWARD if vy >= 0 else self.TRIM_BACKWARD
+        tx = self.TRIM_SLIDE_L if vx >= 0 else self.TRIM_SLIDE_R
+        tw = self.TRIM_TURN_L if vw >= 0 else self.TRIM_TURN_R
+
+        # เทรมแยกแต่ละแกนก่อนแล้วค่อยรวมเป็นกำลังของล้อ
+        ul = vy * ty[0] + vx * tx[0] + vw * tw[0]
+        ll = vy * ty[1] - vx * tx[1] + vw * tw[1]
+        ur = -(vy * ty[2] - vx * tx[2] - vw * tw[2])
+        lr = -(vy * ty[3] + vx * tx[3] - vw * tw[3])
 
         peak = max(abs(ul), abs(ll), abs(ur), abs(lr), 100)
         scale = self.MAX_POWER / peak
@@ -76,8 +82,7 @@ class Wheel:
             int(ur * scale),
             int(lr * scale),
         )
-    
-# Consist of Ball Conveyor and Block Conveyor
+
 class conveyor:
     def __init__(self):
         # Class linker
@@ -118,11 +123,11 @@ class conveyor:
         if not self.is_ball_convey_toggled:
             if reverse:
                 power_expand_board.set_power(self.convey_upper, -100)
-                power_expand_board.set_power(self.convey_lower, 100)
+                power_expand_board.set_power(self.convey_lower, -0)
                 power_expand_board.set_power(self.front_feeder, 100)
             else:
                 power_expand_board.set_power(self.convey_upper, 100)
-                power_expand_board.set_power(self.convey_lower, -100)
+                power_expand_board.set_power(self.convey_lower, -0)
                 power_expand_board.set_power(self.front_feeder, -100)
             self.is_ball_convey_toggled = True
         else:
@@ -183,6 +188,7 @@ class conveyor:
 class Shooter:
     def __init__(self):
         self.is_shooter_toggled = False
+
         self.is_shooter_toggled_angle = False
         self.servo = smartservo_class("M5", "INDEX1")
 
@@ -253,7 +259,6 @@ class Guzzchan:
             self.conveyor.toggle_sweeper()
             time.sleep(0.1)
 
-        # L1/R1 กดค้างเพื่อเดินสายพานบล็อก ปล่อยแล้วหยุด -- ไม่ใช่ toggle จึงอ่านสถานะปุ่มตรง ๆ
         if gamepad.is_key_pressed("L1"):
             self.conveyor.block_convey()
         elif gamepad.is_key_pressed("R1"):
@@ -277,12 +282,16 @@ class Guzzchan:
             time.sleep(0.1)
 
         if self._pressed("Up"):
-            self.conveyor.lift(137)
+            self.conveyor.lift(-137)
             time.sleep(0.1)
 
         if self._pressed("Down"):
             self.conveyor.lift(0)
             time.sleep(0.1)
+
+        if self._pressed("N2"):
+            self.conveyor.lift(-340)
+            time.sleep(0.1)  
 
 
     def stop_all(self):
