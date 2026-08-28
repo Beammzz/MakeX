@@ -2,7 +2,7 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM4",
+  "novapi.port": "00:1B:10:B1:0A:94",
   // Absolute path to a real interpreter, because VS Code exec's this directly as
   // a terminal shellPath -- no shell, no PATH lookup. "python" on PATH resolves
   // here too, but the WindowsApps alias next to it is a Store reparse point that

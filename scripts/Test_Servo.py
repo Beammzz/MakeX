@@ -72,7 +72,7 @@ snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
 Keys are read with the Windows key-state API, the same way `Test_Shooter.py` and
-`Test_DC.py` do it, so a held key really reads as held instead of waiting out
+`Test_VDC.py` do it, so a held key really reads as held instead of waiting out
 the OS auto-repeat delay. It also means keys register while another window has
 focus: disarm before going off to type somewhere else. Off Windows the keyboard
 half is simply inactive and the gamepad still drives the test.

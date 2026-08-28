@@ -57,21 +57,44 @@ class Wheel:
     def stop(self):
         self.set_power(0, 0, 0, 0)
         
-    def holomix(self, lx, ly, rx):
-        vx = -self._dz(lx) * self.STRAFE_GAIN
-        vy = self._dz(ly)
-        vw = -self._dz(rx)
-
+    # รวมแกนเป็นกำลังของล้อ ใช้ร่วมกันทั้งโหมดจอยและโหมดออโต้ ตารางเทรมอยู่ที่เดียว
+    def _mix(self, vy, vx, vw):
         # เลือกตารางเทรมตามทิศที่สั่งอยู่ (vx > 0 = สไลด์ซ้าย, vw > 0 = หมุนซ้าย)
         ty = self.TRIM_FORWARD if vy >= 0 else self.TRIM_BACKWARD
         tx = self.TRIM_SLIDE_L if vx >= 0 else self.TRIM_SLIDE_R
         tw = self.TRIM_TURN_L if vw >= 0 else self.TRIM_TURN_R
 
         # เทรมแยกแต่ละแกนก่อนแล้วค่อยรวมเป็นกำลังของล้อ
-        ul = vy * ty[0] + vx * tx[0] + vw * tw[0]
-        ll = vy * ty[1] - vx * tx[1] + vw * tw[1]
-        ur = -(vy * ty[2] - vx * tx[2] - vw * tw[2])
-        lr = -(vy * ty[3] + vx * tx[3] - vw * tw[3])
+        return (
+            vy * ty[0] + vx * tx[0] + vw * tw[0],
+            vy * ty[1] - vx * tx[1] + vw * tw[1],
+            -(vy * ty[2] - vx * tx[2] - vw * tw[2]),
+            -(vy * ty[3] + vx * tx[3] - vw * tw[3]),
+        )
+
+    def _move(self, vy, vx, vw):
+        ul, ll, ur, lr = self._mix(vy, vx, vw)
+
+        # ปรับสเกลให้ล้อที่แรงสุดเท่ากับ power ที่สั่ง ทิศทแยงรวมสองแกนถึงไม่ทะลุ 100
+        peak = max(abs(ul), abs(ll), abs(ur), abs(lr))
+        if peak == 0:
+            self.stop()
+            return
+        scale = max(abs(vy), abs(vx), abs(vw)) / peak
+
+        self.set_power(
+            int(ul * scale),
+            int(ll * scale),
+            int(ur * scale),
+            int(lr * scale),
+        )
+
+    def holomix(self, lx, ly, rx):
+        ul, ll, ur, lr = self._mix(
+            self._dz(ly),
+            -self._dz(lx) * self.STRAFE_GAIN,
+            -self._dz(rx),
+        )
 
         peak = max(abs(ul), abs(ll), abs(ur), abs(lr), 100)
         scale = self.MAX_POWER / peak
@@ -82,6 +105,33 @@ class Wheel:
             int(ur * scale),
             int(lr * scale),
         )
+
+    # Basic Movement for Auto Mode
+    # power คือกำลังที่จ่ายจริง ไม่ถูกหั่นด้วย MAX_POWER ของโหมดจอย
+    def forward(self, power):
+        self._move(power, 0, 0)
+
+    def backward(self, power):
+        self._move(-power, 0, 0)
+
+    def slide_left(self, power):
+        self._move(0, power, 0)
+
+    def slide_right(self, power):
+        self._move(0, -power, 0)
+
+    # ทแยง = เดินหน้า + สไลด์ พร้อมกัน
+    def slide_upper_left(self, power):
+        self._move(power, power, 0)
+
+    def slide_upper_right(self, power):
+        self._move(power, -power, 0)
+
+    def turn_left(self, power):
+        self._move(0, 0, power)
+
+    def turn_right(self, power):
+        self._move(0, 0, -power)
 
 class conveyor:
     def __init__(self):
@@ -161,7 +211,7 @@ class conveyor:
             if self.shooter.is_shooter_toggled:
                 self.shooter.toggle_shooter()
             time.sleep(0.1)
-            self.shooter.set_shooter_angle(-50)
+            self.shooter.set_shooter_angle(-48)
             power_expand_board.set_power(self.sweeper, -80)
             self.is_sweeper_toggled = True
         else:
@@ -177,12 +227,14 @@ class conveyor:
         power_expand_board.set_power(self.block_a, 0)
         power_expand_board.set_power(self.block_b, 0)
         power_expand_board.set_power(self.convey_upper, 0)
+        power_expand_board.set_power(self.front_feeder, 0)
         power_expand_board.set_power(self.convey_midway, 0)
         power_expand_board.set_power(self.convey_lower, 0)
         power_expand_board.set_power(self.sweeper, 0)
-        self.is_block_convey_toggled = False
+        # รีเซ็ตเฉพาะ toggle ของตัวที่สั่งหยุดไปจริง ๆ (เซอร์โวยังค้างมุมเดิม)
         self.is_ball_convey_toggled = False
         self.is_midway_convey_toggled = False
+        self.is_sweeper_toggled = False
 
 # Consist of Brushless Motor and Shooter Servo
 class Shooter:
@@ -194,7 +246,7 @@ class Shooter:
 
         # Shooter Servo Tuning Parameters
         self.ANGLE_HOME = 0
-        self.ANGLE_AIM = -22
+        self.ANGLE_AIM = -15
         self.ANGLE_SPEED = 50
 
     def set_shooter_angle(self, angle):
@@ -231,6 +283,7 @@ class Guzzchan:
         self.conveyor = conveyor()
         self._prev_keys = {}
         self.shooter.set_shooter_angle(self.shooter.ANGLE_HOME)
+        self.conveyor.lift(0)
 
     def _pressed(self, key):
         now = gamepad.is_key_pressed(key)
@@ -282,7 +335,7 @@ class Guzzchan:
             time.sleep(0.1)
 
         if self._pressed("Up"):
-            self.conveyor.lift(-137)
+            self.conveyor.lift(12)
             time.sleep(0.1)
 
         if self._pressed("Down"):
@@ -290,7 +343,7 @@ class Guzzchan:
             time.sleep(0.1)
 
         if self._pressed("N2"):
-            self.conveyor.lift(-340)
+            self.conveyor.ball_convey(reverse=True)
             time.sleep(0.1)  
 
 
@@ -300,8 +353,30 @@ class Guzzchan:
         self.shooter.stop()   
 
     def auto(self, side):
-        # TODO: Implement Auto Mode with side.
-        pass
+        if side == "L":
+            self.wheel.turn_right(50)
+            time.sleep(0.55)
+            self.wheel.forward(50)
+            time.sleep(1.85)
+            self.wheel.turn_left(50)
+            time.sleep(0.55)
+            self.wheel.forward(35)
+            time.sleep(1.85)
+            self.wheel.stop()
+        else:
+            self.wheel.turn_left(50)
+            time.sleep(0.55)
+            self.wheel.forward(50)
+            time.sleep(1.85)
+            self.wheel.turn_right(50)
+            time.sleep(0.55)
+            self.wheel.forward(35)
+            time.sleep(1.85)
+            self.shooter.set_shooter_angle(-48)
+            time.sleep(0.05)
+            self.conveyor.sweeper_lift_servo.move_to(300, 30)
+            power_expand_board.set_power("DC7", -80)
+            self.stop_all()
 
 # Init
 robot = Guzzchan()
@@ -310,10 +385,13 @@ was_auto = False
 # Main Loop
 while True:
     is_auto = power_manage_module.is_auto_mode()
-    if power_manage_module.is_auto_mode():
-        print("Competition is in auto mode")
-        robot.auto("Left")
+    if is_auto:
+        if not was_auto:
+            print("Competition is in auto mode")
+            robot.auto("L")
+            robot.stop_all()
+        else:
+            time.sleep(0.05)
     else:
         robot.control()
-        
-    time.sleep(0.05)
+    was_auto = is_auto
