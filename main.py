@@ -159,10 +159,10 @@ class conveyor:
 
     def block_convey(self, reverse=False):
         if reverse:
-            power_expand_board.set_power(self.block_a, 100)
+            power_expand_board.set_power(self.block_a, -100)
             power_expand_board.set_power(self.block_b, -100)
         else:
-            power_expand_board.set_power(self.block_a, -100)
+            power_expand_board.set_power(self.block_a, 100)
             power_expand_board.set_power(self.block_b, 100)
 
     def block_convey_stop(self):
@@ -173,12 +173,12 @@ class conveyor:
         if not self.is_ball_convey_toggled:
             if reverse:
                 power_expand_board.set_power(self.convey_upper, -100)
-                power_expand_board.set_power(self.convey_lower, -0)
-                power_expand_board.set_power(self.front_feeder, 100)
+                power_expand_board.set_power(self.convey_lower, 100)
+                power_expand_board.set_power(self.front_feeder, -100)
             else:
                 power_expand_board.set_power(self.convey_upper, 100)
-                power_expand_board.set_power(self.convey_lower, -0)
-                power_expand_board.set_power(self.front_feeder, -100)
+                power_expand_board.set_power(self.convey_lower, -100)
+                power_expand_board.set_power(self.front_feeder, 100)
             self.is_ball_convey_toggled = True
         else:
             power_expand_board.set_power(self.convey_upper, 0)
@@ -189,10 +189,10 @@ class conveyor:
     def midway_convey(self, reverse=False):
         if reverse:
             power_expand_board.set_power(self.convey_midway, -50)
-            power_expand_board.set_power(self.convey_lower, 100)
+            power_expand_board.set_power(self.convey_lower, 80)
         else:
             power_expand_board.set_power(self.convey_midway, 50)
-            power_expand_board.set_power(self.convey_lower, -100)
+            power_expand_board.set_power(self.convey_lower, -80)
 
     def midway_convey_stop(self):
         power_expand_board.set_power(self.convey_midway, 0)
@@ -211,7 +211,7 @@ class conveyor:
             if self.shooter.is_shooter_toggled:
                 self.shooter.toggle_shooter()
             time.sleep(0.1)
-            self.shooter.set_shooter_angle(-48)
+            self.shooter.set_shooter_angle(-45)
             power_expand_board.set_power(self.sweeper, -80)
             self.is_sweeper_toggled = True
         else:
@@ -282,8 +282,6 @@ class Guzzchan:
         self.shooter = Shooter()
         self.conveyor = conveyor()
         self._prev_keys = {}
-        self.shooter.set_shooter_angle(self.shooter.ANGLE_HOME)
-        self.conveyor.lift(0)
 
     def _pressed(self, key):
         now = gamepad.is_key_pressed(key)
@@ -335,7 +333,7 @@ class Guzzchan:
             time.sleep(0.1)
 
         if self._pressed("Up"):
-            self.conveyor.lift(12)
+            self.conveyor.lift(-45)
             time.sleep(0.1)
 
         if self._pressed("Down"):
@@ -350,37 +348,48 @@ class Guzzchan:
     def stop_all(self):
         self.wheel.stop()
         self.conveyor.stop_all()
-        self.shooter.stop()   
+        self.shooter.stop()
+        self.conveyor.sweeper_lift_servo.move_to(0, 30)
 
     def auto(self, side):
         if side == "L":
-            self.wheel.turn_right(50)
-            time.sleep(0.55)
-            self.wheel.forward(50)
-            time.sleep(1.85)
-            self.wheel.turn_left(50)
-            time.sleep(0.55)
-            self.wheel.forward(35)
-            time.sleep(1.85)
-            self.wheel.stop()
-        else:
-            self.wheel.turn_left(50)
-            time.sleep(0.55)
-            self.wheel.forward(50)
-            time.sleep(1.85)
-            self.wheel.turn_right(50)
-            time.sleep(0.55)
-            self.wheel.forward(35)
-            time.sleep(1.85)
-            self.shooter.set_shooter_angle(-48)
-            time.sleep(0.05)
-            self.conveyor.sweeper_lift_servo.move_to(300, 30)
+            """ self.shooter.set_shooter_angle(-45)
+            self.conveyor.sweeper_lift_servo.move_to(270, 30)
             power_expand_board.set_power("DC7", -80)
+            self.wheel.turn_right(50)
+            time.sleep(0.50)
+            self.wheel.forward(50)
+            time.sleep(1.8)
+            self.wheel.turn_left(50)
+            time.sleep(0.60)
+            self.wheel.forward(40)
+            time.sleep(1.5)
+            self.wheel.backward(30)
+            time.sleep(0.3) """
+            self.stop_all()
+        else:
+            """ self.shooter.set_shooter_angle(-45)
+            self.conveyor.sweeper_lift_servo.move_to(270, 30)
+            power_expand_board.set_power("DC7", -80)
+            self.wheel.turn_left(50)
+            time.sleep(0.50)
+            self.wheel.forward(50)
+            time.sleep(1.8)
+            self.wheel.turn_right(50)
+            time.sleep(0.15)
+            self.wheel.forward(40)
+            time.sleep(1.5)
+            self.conveyor.sweeper_lift_servo.move_to(250, 30)
+            time.sleep(0.4)
+            self.wheel.backward(30)
+            time.sleep(0.3) """
             self.stop_all()
 
 # Init
 robot = Guzzchan()
 was_auto = False
+robot.shooter.set_shooter_angle(0)
+robot.conveyor.lift(0)
 
 # Main Loop
 while True:
@@ -391,7 +400,7 @@ while True:
             robot.auto("L")
             robot.stop_all()
         else:
-            time.sleep(0.05)
+            time.sleep(0.15)
     else:
         robot.control()
     was_auto = is_auto
