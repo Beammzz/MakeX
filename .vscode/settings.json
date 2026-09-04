@@ -29,7 +29,8 @@
     "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/stubs",
     "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts",
     "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
-    "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
+    "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts",
+    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"
