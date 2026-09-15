@@ -39,7 +39,17 @@ class Wheel:
         self.TRIM_SLIDE_R  = (1.00, 1.00, 0.7, 0.7)
         self.TRIM_TURN_L   = (1.00, 0.7, 0.7, 0.7)
         self.TRIM_TURN_R   = (1.00, 0.7, 0.7, 0.7)
-        
+
+        # ก้าวกำลังสูงสุดต่อรอบ loop กันสั่งกลับทิศทันทีแล้วหุ่นเสียหลัก
+        # หน่วงเฉพาะตอนเพิ่มกำลัง ผ่อนจอยจ่ายตามทันทีเลย คนขับจะได้ไม่รู้สึกว่าเบรกไม่อยู่
+        # รู้สึกช้า = เพิ่มค่า, ยังเสียหลักตอนกลับทิศ = ลดค่า, 100 = ปิดการหน่วง
+        self.SLEW_STEP = 25
+
+        # ค่ากำลังของแต่ละแกนที่ผ่านการหน่วงแล้ว ใช้เฉพาะโหมดจอย
+        self._vy = 0.0
+        self._vx = 0.0
+        self._vw = 0.0
+
     def _dz(self, v):
         if abs(v) < self.DEADZONE:
             return 0
@@ -56,6 +66,24 @@ class Wheel:
 
     def stop(self):
         self.set_power(0, 0, 0, 0)
+        self._reset_slew()
+
+    # ล้างค่าหน่วงเวลาหยุด กลับเข้าโหมดจอยอีกทีจะได้ไม่กระชากจากค่าค้าง
+    def _reset_slew(self):
+        self._vy = 0.0
+        self._vx = 0.0
+        self._vw = 0.0
+
+    # ไล่ค่าปัจจุบันเข้าหาค่าที่สั่ง ทีละไม่เกินหนึ่งก้าว
+    def _slew(self, cur, target):
+        # ผ่อนหรือปล่อยจอยในทิศเดิม จ่ายตามจอยทันที ไม่ต้องหน่วง
+        if abs(target) <= abs(cur) and target * cur >= 0:
+            return target
+        if target > cur + self.SLEW_STEP:
+            return cur + self.SLEW_STEP
+        if target < cur - self.SLEW_STEP:
+            return cur - self.SLEW_STEP
+        return target
         
     # รวมแกนเป็นกำลังของล้อ ใช้ร่วมกันทั้งโหมดจอยและโหมดออโต้ ตารางเทรมอยู่ที่เดียว
     def _mix(self, vy, vx, vw):
@@ -90,11 +118,12 @@ class Wheel:
         )
 
     def holomix(self, lx, ly, rx):
-        ul, ll, ur, lr = self._mix(
-            self._dz(ly),
-            -self._dz(lx) * self.STRAFE_GAIN,
-            -self._dz(rx),
-        )
+        # หน่วงที่ระดับแกนก่อนเข้า mix เทรมกับการสเกลกำลังเลยทำงานเหมือนเดิม
+        self._vy = self._slew(self._vy, self._dz(ly))
+        self._vx = self._slew(self._vx, -self._dz(lx) * self.STRAFE_GAIN)
+        self._vw = self._slew(self._vw, -self._dz(rx))
+
+        ul, ll, ur, lr = self._mix(self._vy, self._vx, self._vw)
 
         peak = max(abs(ul), abs(ll), abs(ur), abs(lr), 100)
         scale = self.MAX_POWER / peak
@@ -188,10 +217,10 @@ class conveyor:
 
     def midway_convey(self, reverse=False):
         if reverse:
-            power_expand_board.set_power(self.convey_midway, -50)
+            power_expand_board.set_power(self.convey_midway, -70)
             power_expand_board.set_power(self.convey_lower, 80)
         else:
-            power_expand_board.set_power(self.convey_midway, 50)
+            power_expand_board.set_power(self.convey_midway, 70)
             power_expand_board.set_power(self.convey_lower, -80)
 
     def midway_convey_stop(self):
@@ -206,6 +235,7 @@ class conveyor:
             self.block_convey_servo.move_to(0, 50)
             self.block_convey_servo_toggled = False
 
+
     def toggle_sweeper(self):
         if not self.is_sweeper_toggled:
             if self.shooter.is_shooter_toggled:
@@ -214,6 +244,8 @@ class conveyor:
             self.shooter.set_shooter_angle(-45)
             power_expand_board.set_power(self.sweeper, -80)
             self.is_sweeper_toggled = True
+
+    
         else:
             self.shooter.set_shooter_angle(0)
             self.shooter.is_shooter_toggled_angle = False
@@ -333,7 +365,7 @@ class Guzzchan:
             time.sleep(0.1)
 
         if self._pressed("Up"):
-            self.conveyor.lift(-45)
+            self.conveyor.lift(-150)
             time.sleep(0.1)
 
         if self._pressed("Down"):
@@ -343,6 +375,12 @@ class Guzzchan:
         if self._pressed("N2"):
             self.conveyor.ball_convey(reverse=True)
             time.sleep(0.1)  
+
+        if self._pressed("Left"):
+            self.shooter.set_shooter_angle(-40)
+            time.sleep(0.1)
+            self.conveyor.lift(-350)
+            time.sleep(0.1)
 
 
     def stop_all(self):
