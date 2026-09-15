@@ -30,20 +30,19 @@ class Wheel:
         # Holomix Tuning PParameters
         self.DEADZONE = 30
         self.STRAFE_GAIN = 1
-        self.MAX_POWER = 75
 
         # ค่าเทรมแยกตามทิศ (ul, ll, ur, lr) แก้ทีละทิศได้เลยตอนจูนหน้างาน
         self.TRIM_FORWARD  = (1.00, 1.00, 1.00, 1.00)
         self.TRIM_BACKWARD = (1.00, 1.00, 1.00, 1.00)
-        self.TRIM_SLIDE_L  = (1.00, 0.7, 0.7, 0.7)
-        self.TRIM_SLIDE_R  = (1.00, 1.00, 0.7, 0.7)
-        self.TRIM_TURN_L   = (1.00, 0.7, 0.7, 0.7)
-        self.TRIM_TURN_R   = (1.00, 0.7, 0.7, 0.7)
+        self.TRIM_SLIDE_L  = (1.00, 1.00, 1.00, 1.00)
+        self.TRIM_SLIDE_R  = (1.00, 1.00, 1.00, 1.00)
+        self.TRIM_TURN_L   = (1.00, 1.00, 1.00, 1.00)
+        self.TRIM_TURN_R   = (1.00, 1.00, 1.00, 1.00)
 
         # ก้าวกำลังสูงสุดต่อรอบ loop กันสั่งกลับทิศทันทีแล้วหุ่นเสียหลัก
         # หน่วงเฉพาะตอนเพิ่มกำลัง ผ่อนจอยจ่ายตามทันทีเลย คนขับจะได้ไม่รู้สึกว่าเบรกไม่อยู่
         # รู้สึกช้า = เพิ่มค่า, ยังเสียหลักตอนกลับทิศ = ลดค่า, 100 = ปิดการหน่วง
-        self.SLEW_STEP = 25
+        self.SLEW_STEP = 50
 
         # ค่ากำลังของแต่ละแกนที่ผ่านการหน่วงแล้ว ใช้เฉพาะโหมดจอย
         self._vy = 0.0
@@ -58,14 +57,14 @@ class Wheel:
             return (v - self.DEADZONE) * 100 / span
         return (v + self.DEADZONE) * 100 / span
         
-    def set_power(self, ul, ll, ur, lr):
-        self.upper_left.set_power(ul)
-        self.lower_left.set_power(ll)
-        self.upper_right.set_power(ur)
-        self.lower_right.set_power(lr)
+    def set_speed(self, ul, ll, ur, lr):
+        self.upper_left.set_speed(ul)
+        self.lower_left.set_speed(ll)
+        self.upper_right.set_speed(ur)
+        self.lower_right.set_speed(lr)
 
     def stop(self):
-        self.set_power(0, 0, 0, 0)
+        self.set_speed(0, 0, 0, 0)
         self._reset_slew()
 
     # ล้างค่าหน่วงเวลาหยุด กลับเข้าโหมดจอยอีกทีจะได้ไม่กระชากจากค่าค้าง
@@ -110,7 +109,7 @@ class Wheel:
             return
         scale = max(abs(vy), abs(vx), abs(vw)) / peak
 
-        self.set_power(
+        self.set_speed(
             int(ul * scale),
             int(ll * scale),
             int(ur * scale),
@@ -125,10 +124,14 @@ class Wheel:
 
         ul, ll, ur, lr = self._mix(self._vy, self._vx, self._vw)
 
-        peak = max(abs(ul), abs(ll), abs(ur), abs(lr), 100)
-        scale = self.MAX_POWER / peak
+        # ปรับสเกลให้ล้อที่แรงสุดเท่ากับความเร็วที่สั่ง เหมือนกับ _move
+        peak = max(abs(ul), abs(ll), abs(ur), abs(lr))
+        if peak == 0:
+            self.stop()
+            return
+        scale = max(abs(self._vy), abs(self._vx), abs(self._vw)) / peak
 
-        self.set_power(
+        self.set_speed(
             int(ul * scale),
             int(ll * scale),
             int(ur * scale),
@@ -136,7 +139,7 @@ class Wheel:
         )
 
     # Basic Movement for Auto Mode
-    # power คือกำลังที่จ่ายจริง ไม่ถูกหั่นด้วย MAX_POWER ของโหมดจอย
+    # power คือความเร็วที่สั่งจริง ไม่ถูกหั่นด้วยค่าจำกัดของโหมดจอย
     def forward(self, power):
         self._move(power, 0, 0)
 
