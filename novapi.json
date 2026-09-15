@@ -1,0 +1,20 @@
+{
+  "autoReconnect": true,
+  "baudRate": 115200,
+  "lint": {
+    "beforeRun": true,
+    "diagnostics": true
+  },
+  "mainFile": "",
+  "port": "00:1B:10:B1:0A:94",
+  "pythonDependencies": [],
+  "pythonPath": "",
+  "sim": {
+    "physics": false
+  },
+  "stubs": {
+    "shadowStdlib": true,
+    "typeCheckingMode": "basic"
+  },
+  "targetFile": "main.py"
+}
