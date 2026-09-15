@@ -2,7 +2,7 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "00:1B:10:B1:0A:94",
+  "novapi.port": "COM12",
   // Absolute path to a real interpreter, because VS Code exec's this directly as
   // a terminal shellPath -- no shell, no PATH lookup. "python" on PATH resolves
   // here too, but the WindowsApps alias next to it is a Store reparse point that
@@ -18,7 +18,7 @@
   // ชี้ไปที่ scripts/ ของ extension ที่ติดตั้งไว้แทน ตัวแปรนี้ VS Code ใส่ให้ทุก
   // terminal รวมถึงที่ "NovaPi: Run Script" เปิด (extension เองไม่ได้ตั้งให้)
   "terminal.integrated.env.windows": {
-    "NOVAPI_SCRIPTS": "C:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
+    "NOVAPI_SCRIPTS": "C:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
   },
   // Only the checked-out repo. Do NOT re-add the installed extension's stubs
   // folder: first match wins, so a stale copy ahead of these silently reverts
