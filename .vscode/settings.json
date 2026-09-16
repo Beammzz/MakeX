@@ -2,7 +2,7 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM12",
+  "novapi.port": "COM5",
   // Absolute path to a real interpreter, because VS Code exec's this directly as
   // a terminal shellPath -- no shell, no PATH lookup. "python" on PATH resolves
   // here too, but the WindowsApps alias next to it is a Store reparse point that
@@ -30,7 +30,8 @@
     "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts",
     "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
     "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts",
-    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs"
+    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
+    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"

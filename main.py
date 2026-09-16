@@ -19,6 +19,26 @@ print(r"""
   `------'   `-----'    `--------'`--------'   `-----' `--' `--'  `--' `--'`--'  `--' 
 """)
 
+# ตัวคุม PID ตัวเดียวใช้ได้ทุกล้อ update() คืนค่าที่ต้องแก้ ไม่ใช่กำลังทั้งก้อน
+class PID:
+    def __init__(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.integral = 0.0
+        self.previous_error = 0.0
+
+    def reset(self):
+        self.integral = 0.0
+        self.previous_error = 0.0
+
+    def update(self, target, current):
+        error = target - current
+        self.integral += error
+        derivative = error - self.previous_error
+        self.previous_error = error
+        return self.kp * error + self.ki * self.integral + self.kd * derivative
+
 # Mecanum Wheel Control
 class Wheel:
     def __init__(self):
@@ -26,29 +46,29 @@ class Wheel:
         self.lower_left = encoder_motor_class("M2", "INDEX1")
         self.upper_right = encoder_motor_class("M3", "INDEX1")
         self.lower_right = encoder_motor_class("M4", "INDEX1")
-        
+
         # Holomix Tuning Parameters
-        self.DEADZONE = 45
-        self.STRAFE_GAIN = 1.5
-        self.Multiply = 1.75
+        self.DEADZONE = 40
+        self.STRAFE_GAIN = 1
+        self.Multiply = 1.5        # กำลัง 0-100 คูณเป็นความเร็วเป้าหมาย (rpm) ก่อนเข้า PID
+        self.MAX_SPEED = 255        # เพดานความเร็วที่ส่งให้มอเตอร์
 
-        # ค่าเทรมแยกตามทิศ (ul, ll, ur, lr) แก้ทีละทิศได้เลยตอนจูนหน้างาน
-        self.TRIM_FORWARD  = (1.00, 1.00, 1.00, 1.00)
-        self.TRIM_BACKWARD = (1.00, 1.00, 1.00, 1.00)
-        self.TRIM_SLIDE_L  = (1.00, 1.00, 1.00, 1.00)
-        self.TRIM_SLIDE_R  = (1.00, 1.00, 1.00, 1.00)
-        self.TRIM_TURN_L   = (1.00, 1.00, 1.00, 1.00)
-        self.TRIM_TURN_R   = (1.00, 1.00, 1.00, 1.00)
+        # ค่าถ่วงกำลังรายล้อ คูณหลัง PID แก้แล้ว ล้อไหนยังแรงเกินก็ลดตัวนั้น
+        self.UL_TUNE = 1.00
+        self.LL_TUNE = 1.00
+        self.UR_TUNE = 1.00
+        self.LR_TUNE = 1.00
 
-        # ก้าวกำลังสูงสุดต่อรอบ loop กันสั่งกลับทิศทันทีแล้วหุ่นเสียหลัก
-        # หน่วงเฉพาะตอนเพิ่มกำลัง ผ่อนจอยจ่ายตามทันทีเลย คนขับจะได้ไม่รู้สึกว่าเบรกไม่อยู่
-        # รู้สึกช้า = เพิ่มค่า, ยังเสียหลักตอนกลับทิศ = ลดค่า, 100 = ปิดการหน่วง
-        self.SLEW_STEP = 25
+        # เครื่องหมายของความเร็วที่อ่านกลับมา เทียบกับความเร็วที่สั่ง
+        # ถ้าหุ่นพุ่งแรงผิดปกติหรือคุมไม่อยู่ทันทีที่เริ่มวิ่ง ให้สลับเป็น 1
+        self.FEEDBACK_SIGN = -1
 
-        # ค่ากำลังของแต่ละแกนที่ผ่านการหน่วงแล้ว ใช้เฉพาะโหมดจอย
-        self._vy = 0.0
-        self._vx = 0.0
-        self._vw = 0.0
+        # PID รายล้อ (kp, ki, kd) จูนด้วย scripts/Tune_Teleop.py
+        self.pid_ul = PID(1.00, 0.00, 0.00)
+        self.pid_ll = PID(1.00, 0.00, 0.00)
+        self.pid_ur = PID(1.00, 0.00, 0.00)
+        self.pid_lr = PID(1.00, 0.00, 0.00)
+        self._pids = (self.pid_ul, self.pid_ll, self.pid_ur, self.pid_lr)
 
     def _dz(self, v):
         if abs(v) < self.DEADZONE:
@@ -57,114 +77,80 @@ class Wheel:
         if v > 0:
             return (v - self.DEADZONE) * 100 / span
         return (v + self.DEADZONE) * 100 / span
-        
+
+    # กำลัง -100..100 ต่อล้อ แปลงเป็นความเร็วเป้าหมาย ให้ PID แก้ แล้วค่อยคูณ TUNE
     def set_speed(self, ul, ll, ur, lr):
-        self.upper_left.set_speed(ul * self.Multiply)
-        self.lower_left.set_speed(ll * self.Multiply)
-        self.upper_right.set_speed(ur * self.Multiply)
-        self.lower_right.set_speed(lr * self.Multiply)
+        motors = (self.upper_left, self.lower_left, self.upper_right, self.lower_right)
+        tunes = (self.UL_TUNE, self.LL_TUNE, self.UR_TUNE, self.LR_TUNE)
+        targets = (ul * self.Multiply, ll * self.Multiply,
+                   ur * self.Multiply, lr * self.Multiply)
+
+        for i in range(4):
+            current = self.FEEDBACK_SIGN * motors[i].get_value("speed")
+            out = (targets[i] + self._pids[i].update(targets[i], current)) * tunes[i]
+            motors[i].set_speed(int(max(min(out, self.MAX_SPEED), -self.MAX_SPEED)))
 
     def stop(self):
-        self.set_speed(0, 0, 0, 0)
-        self._reset_slew()
+        # สั่งหยุดตรง ๆ ไม่ผ่าน PID แล้วล้างค่าสะสม รอบหน้าจะได้ไม่กระชากจากค่าค้าง
+        self.upper_left.set_speed(0)
+        self.lower_left.set_speed(0)
+        self.upper_right.set_speed(0)
+        self.lower_right.set_speed(0)
+        for pid in self._pids:
+            pid.reset()
 
-    # ล้างค่าหน่วงเวลาหยุด กลับเข้าโหมดจอยอีกทีจะได้ไม่กระชากจากค่าค้าง
-    def _reset_slew(self):
-        self._vy = 0.0
-        self._vx = 0.0
-        self._vw = 0.0
-
-    # ไล่ค่าปัจจุบันเข้าหาค่าที่สั่ง ทีละไม่เกินหนึ่งก้าว
-    def _slew(self, cur, target):
-        # ผ่อนหรือปล่อยจอยในทิศเดิม จ่ายตามจอยทันที ไม่ต้องหน่วง
-        if abs(target) <= abs(cur) and target * cur >= 0:
-            return target
-        if target > cur + self.SLEW_STEP:
-            return cur + self.SLEW_STEP
-        if target < cur - self.SLEW_STEP:
-            return cur - self.SLEW_STEP
-        return target
-        
-    # รวมแกนเป็นกำลังของล้อ ใช้ร่วมกันทั้งโหมดจอยและโหมดออโต้ ตารางเทรมอยู่ที่เดียว
-    def _mix(self, vy, vx, vw):
-        # เลือกตารางเทรมตามทิศที่สั่งอยู่ (vx > 0 = สไลด์ซ้าย, vw > 0 = หมุนซ้าย)
-        ty = self.TRIM_FORWARD if vy >= 0 else self.TRIM_BACKWARD
-        tx = self.TRIM_SLIDE_L if vx >= 0 else self.TRIM_SLIDE_R
-        tw = self.TRIM_TURN_L if vw >= 0 else self.TRIM_TURN_R
-
-        # เทรมแยกแต่ละแกนก่อนแล้วค่อยรวมเป็นกำลังของล้อ
+    # รวมแกนเป็นกำลังของล้อ ฝั่งขวาติดกลับด้าน เครื่องหมายเลยสลับ
+    def _mix(self, vx, vy, vw):
         return (
-            vy * ty[0] + vx * tx[0] + vw * tw[0],
-            vy * ty[1] - vx * tx[1] + vw * tw[1],
-            -(vy * ty[2] - vx * tx[2] - vw * tw[2]),
-            -(vy * ty[3] + vx * tx[3] - vw * tw[3]),
+            vx + vy + vw,
+            -vx + vy + vw,
+            vx - vy + vw,
+            -vx - vy + vw,
         )
 
-    def _move(self, vy, vx, vw):
-        ul, ll, ur, lr = self._mix(vy, vx, vw)
-
-        # ปรับสเกลให้ล้อที่แรงสุดเท่ากับ power ที่สั่ง ทิศทแยงรวมสองแกนถึงไม่ทะลุ 100
-        peak = max(abs(ul), abs(ll), abs(ur), abs(lr))
-        if peak == 0:
+    # ใช้ร่วมกันทั้งโหมดจอยและโหมดออโต้ ทางเข้าเดียวไปหา PID
+    def drive(self, vx, vy, vw):
+        if vx == 0 and vy == 0 and vw == 0:
             self.stop()
             return
-        scale = max(abs(vy), abs(vx), abs(vw)) / peak
 
-        self.set_speed(
-            int(ul * scale),
-            int(ll * scale),
-            int(ur * scale),
-            int(lr * scale),
-        )
+        ul, ll, ur, lr = self._mix(vx, vy, vw)
+
+        # หารด้วยล้อที่แรงสุดเฉพาะตอนทะลุ 100 ทิศทแยงจะได้หดทั้งก้อน ไม่ใช่ตัดล้อเดียว
+        # ตัดล้อเดียวแล้วทิศที่หุ่นวิ่งจริงจะเพี้ยน
+        peak = max(abs(ul), abs(ll), abs(ur), abs(lr), 100)
+        scale = 100 / peak
+        self.set_speed(ul * scale, ll * scale, ur * scale, lr * scale)
 
     def holomix(self, lx, ly, rx):
-        # หน่วงที่ระดับแกนก่อนเข้า mix เทรมกับการสเกลกำลังเลยทำงานเหมือนเดิม
-        self._vy = self._slew(self._vy, self._dz(ly))
-        self._vx = self._slew(self._vx, -self._dz(lx) * self.STRAFE_GAIN)
-        self._vw = self._slew(self._vw, -self._dz(rx))
-
-        ul, ll, ur, lr = self._mix(self._vy, self._vx, self._vw)
-
-        # ปรับสเกลให้ล้อที่แรงสุดเท่ากับความเร็วที่สั่ง เหมือนกับ _move
-        peak = max(abs(ul), abs(ll), abs(ur), abs(lr))
-        if peak == 0:
-            self.stop()
-            return
-        scale = max(abs(self._vy), abs(self._vx), abs(self._vw)) / peak
-
-        self.set_speed(
-            int(ul * scale),
-            int(ll * scale),
-            int(ur * scale),
-            int(lr * scale),
-        )
+        self.drive(-self._dz(lx) * self.STRAFE_GAIN, self._dz(ly), -self._dz(rx))
 
     # Basic Movement for Auto Mode
     # power คือความเร็วที่สั่งจริง ไม่ถูกหั่นด้วยค่าจำกัดของโหมดจอย
     def forward(self, power):
-        self._move(power, 0, 0)
+        self.drive(0, power, 0)
 
     def backward(self, power):
-        self._move(-power, 0, 0)
+        self.drive(0, -power, 0)
 
     def slide_left(self, power):
-        self._move(0, power, 0)
+        self.drive(power, 0, 0)
 
     def slide_right(self, power):
-        self._move(0, -power, 0)
+        self.drive(-power, 0, 0)
 
     # ทแยง = เดินหน้า + สไลด์ พร้อมกัน
     def slide_upper_left(self, power):
-        self._move(power, power, 0)
+        self.drive(power, power, 0)
 
     def slide_upper_right(self, power):
-        self._move(power, -power, 0)
+        self.drive(-power, power, 0)
 
     def turn_left(self, power):
-        self._move(0, 0, power)
+        self.drive(0, 0, power)
 
     def turn_right(self, power):
-        self._move(0, 0, -power)
+        self.drive(0, 0, -power)
 
 class conveyor:
     def __init__(self):
@@ -179,9 +165,8 @@ class conveyor:
         self.front_feeder = "DC2"
         self.convey_midway = "DC5"
         self.convey_lower = "DC6"
-        self.sweeper = "DC7"
+        self.sweeper = "DC2"
         self.block_convey_servo = smartservo_class("M5", "INDEX2")
-        self.sweeper_lift_servo = smartservo_class("M6", "INDEX1")
 
         # Toggle State
         self.is_ball_convey_toggled = False
@@ -255,9 +240,6 @@ class conveyor:
             self.shooter.is_shooter_toggled_angle = False
             power_expand_board.set_power(self.sweeper, 0)
             self.is_sweeper_toggled = False
-
-    def lift(self, angle):
-        self.sweeper_lift_servo.move_to(angle, 30)
 
     def stop_all(self):
         power_expand_board.set_power(self.block_a, 0)
@@ -368,30 +350,15 @@ class Guzzchan:
             self.conveyor.block_convey_servo_move()
             time.sleep(0.1)
 
-        if self._pressed("Up"):
-            self.conveyor.lift(-150)
-            time.sleep(0.1)
-
-        if self._pressed("Down"):
-            self.conveyor.lift(0)
-            time.sleep(0.1)
-
         if self._pressed("N2"):
             self.conveyor.ball_convey(reverse=True)
             time.sleep(0.1)  
-
-        if self._pressed("Left"):
-            self.shooter.set_shooter_angle(-40)
-            time.sleep(0.1)
-            self.conveyor.lift(-350)
-            time.sleep(0.1)
 
 
     def stop_all(self):
         self.wheel.stop()
         self.conveyor.stop_all()
         self.shooter.stop()
-        self.conveyor.sweeper_lift_servo.move_to(0, 30)
 
     def auto(self, side):
         if side == "L":
@@ -431,7 +398,6 @@ class Guzzchan:
 robot = Guzzchan()
 was_auto = False
 robot.shooter.set_shooter_angle(0)
-robot.conveyor.lift(0)
 
 # Main Loop
 while True:
