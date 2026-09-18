@@ -1,27 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Drive the robot from the PC, and fire `Guzzchan.auto()` without leaving teleop.
+"""Drive the robot from the PC through main.py's own code, and fire
+`Guzzchan.auto_mode()` without leaving teleop.
 
-A copy of the extension's `teleop.py` with one thing added: a button that reads
-`main.py` off the disk, ships its classes to the board and calls
-`Guzzchan.auto(side)` there, then hands the sticks back. Copied rather than
-imported because the extension's script is not ours to edit, and because it is
-worth reading -- everything under HOW THE DRIVING WORKS is its original text.
+A copy of the extension's `teleop.py`, changed in two ways: the sticks drive
+main.py's `Guzzchan.control()` on the board instead of a mix of their own, and
+a button re-reads `main.py`, ships it and runs `auto_mode()` there. Copied
+rather than imported because the extension's script is not ours to edit, and
+because it is worth reading -- most of HOW THE DRIVING WORKS is its original
+text.
 
     python scripts/Teleop.py COM6
     python scripts/Teleop.py COM6 --keyboard
 
     W / S   forward / backward        Q / E   rotate left / right
-    A / D   strafe left / right       SHIFT   boost      SPACE  stop
-    1..5    set power 20/30/40/50/60  ESC     quit (stops motors, restarts main.py)
-    Z       flip the auto side, L <-> R
-    X       run auto on that side -- re-reads main.py first
+    A / D   strafe left / right       SHIFT   slow speed   SPACE  stop
+    X       run auto_mode() -- re-reads main.py first
+    ESC     quit (stops motors, restarts main.py)
 
-    Xbox: left stick drives/strafes, right stick X rotates, RT boost,
-          B stop, BACK or ESC quit, Y flips the side, X runs auto.
-          1..5 still set power.
-
-Motor ports follow main.py: M1 upper-left, M2 lower-left, M3 upper-right,
-M4 lower-right, all INDEX1, right side mirrored.
+    Xbox: left stick drives/strafes, right stick X rotates, B stop,
+          BACK or ESC quit, X runs auto.
 
 Keys count only while the terminal running this script has focus, so typing W in
 the editor or a browser cannot drive the robot; click back into the terminal to
@@ -29,44 +26,50 @@ take the sticks. Losing focus reads as all-keys-up, which the deadman turns into
 a stop. A gamepad is read whatever has focus -- it is not the machine's keyboard.
 
 
-AUTO
-====
+MAIN.PY ON THE BOARD
+====================
 
-**The file is read when you press X, not when you save it.** That is the whole
-point of the button: a half-written `auto()` sitting in the editor is nothing to
-the board until you ask for it, so saving mid-session can never light the board
-up red in the middle of a drive. Nothing is watched, nothing uploads in the
-background.
+**Driving is main.py's code, not a copy.** At startup main.py's imports,
+constants and classes are shipped to the board and a `Guzzchan` is built there.
+Its `gamepad` is then swapped for a stand-in, and every pulse puts the PC's
+stick values into that stand-in and calls `Guzzchan.control()`. So the stick
+thresholds, the two speeds, REVERSE and every TRIM are exactly main.py's --
+nothing here needs keeping in step with it. Keys are a full stick (100, the
+normal speed); SHIFT makes them half a stick (50, the slow speed).
+
+**The file is read at startup and when you press X, not when you save it.** A
+half-written main.py sitting in the editor is nothing to the board until you
+ask for it, so saving mid-session can never light the board up red in the
+middle of a drive. Nothing is watched, nothing uploads in the background.
 
 **A main.py that does not compile never leaves the PC.** `board_program()`
-parses it here with `ast`, so a typo costs a printed SyntaxError and the drive
-carries on; the board is not touched at all. Only source that already parses is
-shipped.
+parses it here with `ast`, so a typo costs a printed SyntaxError; the board is
+not touched at all and keeps driving the code it already has. At startup there
+is nothing to fall back on, so it is an exit instead.
 
-**What gets shipped is main.py's imports and classes, not main.py.** The banner
-print, `robot = Guzzchan()` and the match loop are dropped -- the board builds
-its own `Guzzchan` and calls `auto(side)` on it, which is the same code path the
-real match takes minus `power_manage_module.is_auto_mode()`. Note that main.py's
-own loop calls `auto("Left")` while `auto()` compares against `"L"`; `SIDES`
-below holds what the comparison actually wants.
+**What gets shipped is main.py's imports, constants and classes, not main.py.**
+The banner print, `robot = Guzzchan()` and the match loop are dropped -- any
+top-level assignment that calls something is left out, so constants like
+`TRIM_FORWARD` go and constructed objects do not. X builds a fresh `Guzzchan`
+and calls `auto_mode()` on it, the same code path the real match takes minus
+`power_manage_module.is_auto_mode()`; that fresh one then carries on driving.
 
 **The classes really are live board-side, not re-sent per call.** The source
-is reassembled into `_S` and `exec`d, which binds `Wheel`, `Shooter`,
-`conveyor` and `Guzzchan` -- and the `mbuild` imports their methods resolve
-against -- into the board's live-mode globals, and those persist for the whole
-session. That is live.py's own chunked path: every `define()` body over 240
-bytes takes it, which is every board_code in this repo. `load()` proves it
-rather than trusting it, by naming the class from a *different* frame than the
-one that exec'd it, then frees `_S` and reports the RAM auto has left.
+is reassembled into `_S` and `exec`d, which binds the classes -- and the
+`mbuild` imports their methods resolve against -- into the board's live-mode
+globals, and those persist for the whole session. That is live.py's own
+chunked path, the one every `define()` body over 240 bytes takes. `load()`
+proves it rather than trusting it, by naming the class from a *different*
+frame than the one that exec'd it, then frees `_S` and reports the RAM left.
 
-**Roughly 10 KB goes over the radio in ~67 frames, about 3 seconds.** So the
-source last sent is remembered and re-sent only when the file really changed:
-edit, press X, wait ~3 s; press X again and auto starts immediately.
+**The source last sent is remembered** and re-sent only when the file really
+changed, so pressing X twice on the same file starts auto immediately.
 
 **Auto cannot be interrupted from here.** Live mode runs one request at a time,
-so while `auto()` runs board-side the PC is blocked waiting for its reply and
-any stop you send just queues behind it. The robot's power switch is the abort.
-`AUTO_TIMEOUT` bounds how long this script waits, not how long the board runs.
+so while `auto_mode()` runs board-side the PC is blocked waiting for its reply
+and any stop you send just queues behind it. The robot's power switch is the
+abort. `AUTO_TIMEOUT` bounds how long this script waits, not how long the board
+runs.
 
 `live` and `xinput` live in the extension's `scripts/` folder, not next to this
 file; `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS` if the
@@ -77,8 +80,7 @@ HOW THE DRIVING WORKS  (from the extension's teleop.py)
 =======================================================
 
 Built on live mode (see live.py): the board is put in live mode, a `_d()` helper
-is defined once board-side, and each poll sends a tiny `_d(ul, ll, ur, lr)`
-frame.
+is defined once board-side, and each poll sends a tiny `_d(lx, ly, rx)` frame.
 
 **The command rate is 1/PULSE, not the radio's speed.** Live mode runs one
 request at a time, and `_d` spends PULSE seconds asleep inside its own call, so
@@ -87,11 +89,11 @@ a bare round trip is 38 ms median / 45 ms worst (~26 Hz of headroom), while the
 achieved command rate tracked 1/PULSE exactly -- 5.6 Hz at PULSE 0.18, 10.3 at
 0.10, 13.2 at 0.08, 16.6 at 0.06, with no dropped replies at any of them. Hence
 the default below; `--pulse` exists because the right value depends on the link
-and on how long the four `set_power` calls take on a given robot.
+and on how long `control()` takes on a given robot.
 
 **The board stops itself.** Live mode cannot spawn a watchdog thread
 (`_thread.start_new_thread` raises there) and the motor API has no timed move,
-so the deadman is built into the command: `_d` sets power, sleeps PULSE, then
+so the deadman is built into the command: `_d` drives, sleeps PULSE, then
 stops. Nothing arriving for PULSE seconds means the wheels stop -- a crashed PC,
 a yanked dongle or a closed laptop all fail safe.
 
@@ -99,7 +101,7 @@ a yanked dongle or a closed laptop all fail safe.
 run one at a time, so a command costs the board PULSE seconds no matter how fast
 the PC sends. An earlier version fired `_d` every 0.12 s with no reply, which is
 ~6/s into a board that drains ~4/s: the queue grew, and the steering lag grew
-with it. Each `_d` now replies the instant it has set the power, and the loop
+with it. Each `_d` now replies the instant it has set the wheels, and the loop
 waits for that reply, so the send rate matches the board exactly and the queue
 never holds more than one command.
 
@@ -108,8 +110,8 @@ drive; this owns the robot outright. Exiting puts the board back in mode 0,
 which restarts /main.py from the top.
 
 An Xbox controller is used automatically when one is plugged in (see xinput.py);
-pass --keyboard to force keys. Analog sticks suit mecanum better than keys,
-since strafe wants proportional input.
+pass --keyboard to force keys. A stick gives main.py both of its speeds; keys
+only give them through SHIFT.
 """
 import ast
 import ctypes
@@ -143,50 +145,53 @@ from xinput import Controller, find as xinput_find    # noqa: E402
 # for a gap and pick up again, which is a stutter, not a runaway.
 DEFAULT_PULSE = 0.08
 IDLE_TICK = 0.05        # poll interval while stopped (nothing is in flight)
-DEFAULT_POWER = 30
-BOOST = 1.6
+# Stick value a key stands for. main.py drives normal speed past 70 and slow
+# speed between 20 and 70 (Guzzchan.control), so these land one in each band.
+KEY_FULL = 100
+KEY_SLOW = 50
 
-# main.py sits one level up from scripts/; that is the file the auto button reads.
+# main.py sits one level up from scripts/; that is the file shipped to the board.
 MAIN_PY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        'main.py')
-# The class the auto button builds and calls auto() on.
+# The class built board-side; it must have control(), auto_mode() and .wheel.
 ENTRY = 'Guzzchan'
-# What `Guzzchan.auto()` compares `side` against, in the order the button cycles.
-SIDES = ('L', 'R')
 # How long to wait for auto to say it finished. A MakeX auto period is 30 s;
 # this only bounds the wait, the board keeps running either way.
 AUTO_TIMEOUT = 45.0
 
 
-# Board-side setup, one small statement per frame. Live-mode globals persist for
-# the session, so this runs once. Deliberately NOT one big blob: a single
-# oversized source has to go through live.py's chunked `exec` path, which failed
-# here for reasons not worth chasing when four short frames just work -- and
-# stepwise, each frame's reply confirms that part landed.
+# Board-side helpers, one small statement per frame. Live-mode globals persist
+# for the session, so this runs once; stepwise, each frame's reply confirms that
+# part landed. `_R` (the Guzzchan) does not exist yet -- MainPy.build() makes
+# it -- and these only look it up when called.
 def setup_steps(pulse):
     return [
+        # Stands in for main.py's `gamepad`: control() reads the PC's sticks out
+        # of `j`, and anything else it asks (a button, is_connected) reads 0.
         "import time\n"
-        "from mbuild.encoder_motor import encoder_motor_class as _E\n"
-        "online_debug_respond('imported')",
-
-        "_M = [_E('M1','INDEX1'), _E('M2','INDEX1'),"
-        " _E('M3','INDEX1'), _E('M4','INDEX1')]\n"
-        "online_debug_respond(len(_M))",
+        "class _Pad:\n"
+        " def __init__(self):\n"
+        "  self.j = {}\n"
+        " def get_joystick(self, k):\n"
+        "  return self.j.get(k, 0)\n"
+        " def __getattr__(self, n):\n"
+        "  return lambda *a: 0\n"
+        "_P = _Pad()\n"
+        "online_debug_respond('pad ok')",
 
         "def _s():\n"
-        " for m in _M:\n"
-        "  m.stop()\n"
+        " _R.wheel.stop()\n"
         "online_debug_respond('stop ok')",
 
-        # Responds as soon as the power is set, BEFORE the pulse sleep. That reply
-        # is the PC's go-ahead to send the next command, which then queues while
-        # this one is still sleeping -- so the board rolls straight from one pulse
-        # into the next with no radio round trip in between, and the queue never
-        # holds more than one command. Responding after the sleep instead would
-        # leave the wheels stopped for a round trip on every pulse.
-        "def _d(a,b,c,d,t=%r):\n"
-        " for i in range(4):\n"
-        "  _M[i].set_power((a,b,c,d)[i])\n"
+        # Responds as soon as the wheels are set, BEFORE the pulse sleep. That
+        # reply is the PC's go-ahead to send the next command, which then queues
+        # while this one is still sleeping -- so the board rolls straight from
+        # one pulse into the next with no radio round trip in between, and the
+        # queue never holds more than one command. Responding after the sleep
+        # instead would leave the wheels stopped for a round trip on every pulse.
+        "def _d(lx,ly,rx,t=%r):\n"
+        " _P.j = {'Lx': lx, 'Ly': ly, 'Rx': rx}\n"
+        " _R.control()\n"
         " online_debug_respond(1)\n"
         " time.sleep(t)\n"
         " _s()\n"
@@ -198,9 +203,7 @@ def setup_steps(pulse):
 # with the OS auto-repeat delay in the way; this reports true held-key state,
 # which is what makes holding W feel like holding W.
 VK = {'W': 0x57, 'A': 0x41, 'S': 0x53, 'D': 0x44, 'Q': 0x51, 'E': 0x45,
-      'Z': 0x5A, 'X': 0x58,
-      'SHIFT': 0x10, 'SPACE': 0x20, 'ESC': 0x1B,
-      '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34, '5': 0x35}
+      'X': 0x58, 'SHIFT': 0x10, 'SPACE': 0x20, 'ESC': 0x1B}
 
 _user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
 _kernel32 = ctypes.windll.kernel32 if sys.platform == 'win32' else None
@@ -293,47 +296,28 @@ def down(key):
     return focused() and bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
 
 
-def mecanum(fwd, strafe, rot, power):
-    """Turn axes in [-1, 1] into (ul, ll, ur, lr), mirroring main.py.
-
-    Combining axes can push a wheel past full scale; the whole vector is scaled
-    down rather than clamped per wheel, because clamping one wheel changes the
-    direction the robot actually travels.
-    """
-    ul = fwd - strafe + rot
-    ll = fwd + strafe + rot
-    ur = -fwd - strafe + rot
-    lr = -fwd + strafe + rot
-    peak = max(abs(ul), abs(ll), abs(ur), abs(lr))
-    if peak > 1.0:
-        ul, ll, ur, lr = (v / peak for v in (ul, ll, ur, lr))
-    return tuple(max(-100, min(100, int(round(v * power))))
-                 for v in (ul, ll, ur, lr))
-
-
 def keyboard_axes():
-    """(fwd, strafe, rot, boost, stop, quit, run_auto, flip_side) from held keys."""
-    fwd = (1.0 if down('W') else 0.0) - (1.0 if down('S') else 0.0)
-    strafe = (1.0 if down('D') else 0.0) - (1.0 if down('A') else 0.0)
-    rot = (1.0 if down('E') else 0.0) - (1.0 if down('Q') else 0.0)
-    return (fwd, strafe, rot, down('SHIFT'), down('SPACE'), down('ESC'),
-            down('X'), down('Z'))
+    """(lx, ly, rx, stop, quit, run_auto) from held keys, sticks in -100..100."""
+    k = KEY_SLOW if down('SHIFT') else KEY_FULL
+    lx = (k if down('D') else 0) - (k if down('A') else 0)
+    ly = (k if down('W') else 0) - (k if down('S') else 0)
+    rx = (k if down('E') else 0) - (k if down('Q') else 0)
+    return lx, ly, rx, down('SPACE'), down('ESC'), down('X')
 
 
 def gamepad_axes(pad):
     """Same tuple, from an Xbox controller.
 
-    Left stick drives and strafes, right stick X rotates, RT boosts, B stops,
-    BACK quits, X runs auto and Y flips the side. Falls back to zeros (not a
-    crash) if the pad is unplugged mid-session, which the deadman then turns
-    into a stop.
+    Left stick drives and strafes, right stick X rotates, B stops, BACK quits,
+    X runs auto. Falls back to zeros (not a crash) if the pad is unplugged
+    mid-session, which the deadman then turns into a stop.
     """
     s = pad.read()
     if s is None:
-        return 0.0, 0.0, 0.0, False, True, False, False, False
-    return (s['ly'], s['lx'], s['rx'],
-            s['rt'] > 0.5, 'B' in s['buttons'], 'BACK' in s['buttons'],
-            'X' in s['buttons'], 'Y' in s['buttons'])
+        return 0, 0, 0, True, False, False
+    return (int(round(s['lx'] * 100)), int(round(s['ly'] * 100)),
+            int(round(s['rx'] * 100)),
+            'B' in s['buttons'], 'BACK' in s['buttons'], 'X' in s['buttons'])
 
 
 def pressed(prev, name, now):
@@ -347,35 +331,37 @@ def pressed(prev, name, now):
     return fired
 
 
-# ------------------------------------------------------------------- auto --
+# ------------------------------------------------------------- main.py --
 
 def board_program(path):
-    """main.py's top-level imports, classes and functions, as one source string.
+    """main.py's top-level imports, constants, classes and functions, as one
+    source string.
 
     Parsing here is the point: a main.py that does not compile raises
     SyntaxError on the PC, before a single frame is sent. What is dropped is
-    everything that is not a definition -- the banner print, `robot =
-    Guzzchan()` and the match loop -- because the board builds its own Guzzchan
-    and calls auto() on it.
+    everything else -- the banner print, the match loop, and any assignment
+    that calls something, like `robot = Guzzchan()` -- because the board builds
+    its own Guzzchan.
     """
     with open(path, encoding='utf-8') as fh:
         src = fh.read()
     lines = src.split('\n')
     kept = [n for n in ast.parse(src, path).body
             if isinstance(n, (ast.Import, ast.ImportFrom,
-                              ast.ClassDef, ast.FunctionDef))]
+                              ast.ClassDef, ast.FunctionDef))
+            or (isinstance(n, ast.Assign) and not isinstance(n.value, ast.Call))]
     if not kept:
         raise IOError('%s has no classes to send' % path)
     return '\n'.join('\n'.join(lines[n.lineno - 1:n.end_lineno])
                      for n in kept) + '\n'
 
 
-class Auto(object):
-    """Loads main.py's classes onto the board on demand and runs auto() there.
+class MainPy(object):
+    """main.py's classes on the board: loads them, builds `_R`, runs auto.
 
-    Reading is tied to the button and nothing else: no watcher, no upload on
-    save. Between presses the board holds whatever was last sent, so a broken
-    editor buffer is invisible to it.
+    Reading is tied to startup and the auto button and nothing else: no
+    watcher, no upload on save. Between presses the board holds whatever was
+    last sent, so a broken editor buffer is invisible to it.
     """
 
     def __init__(self, lv, path):
@@ -394,21 +380,20 @@ class Auto(object):
               % (len(src.encode('utf-8')), free or '?'))
         self.lv.send_source(src)        # raises IOError if a fragment is lost
         # exec(_S) is live.py's own chunked path -- the one define() takes for
-        # any board_code over 240 bytes, which is every board_code in this repo
-        # (Tune_Teleop 1.1 KB, Test_Shooter 2.7 KB, Test_Encoder 2.9 KB). Names
-        # it binds land in the board-side globals, and those persist for the
-        # session; that is what lets the NEXT frame call Guzzchan(), and what
-        # lets each method resolve `encoder_motor_class` and friends when it
-        # runs. No reply means the source raised on the way in.
+        # any board_code over 240 bytes. Names it binds land in the board-side
+        # globals, and those persist for the session; that is what lets the
+        # NEXT frame call Guzzchan(), and what lets each method resolve
+        # `encoder_motor_class`, `gamepad` and TRIM_FORWARD when it runs. No
+        # reply means the source raised on the way in.
         if self.lv.run("exec(_S)\nonline_debug_respond('loaded')",
                        timeout=20) is None:
             raise IOError('the board did not accept main.py. It parses here, so '
                           'look at the USB console: an import raised, or the '
-                          'board ran out of memory part-way through 10 KB.')
+                          'board ran out of memory part-way through.')
         # A separate frame on purpose. Naming the class here, from a frame that
         # is not the one that exec'd it, is the proof that the assumption above
         # held: a bare NameError gets no reply and is reported as exactly that.
-        # It also drops the 10 KB of source and says how much RAM auto has left.
+        # It also drops the source and says how much RAM is left.
         free = self.lv.run("_S = ''\nimport gc\ngc.collect()\n%s\n"
                            "online_debug_respond(gc.mem_free())" % ENTRY)
         if free is None:
@@ -419,8 +404,27 @@ class Auto(object):
         self.sent = src
         return True
 
-    def run(self, side):
-        """Read, then stop the wheels, then refresh the code, then run auto(side).
+    def build(self):
+        """A fresh Guzzchan as `_R`, with its gamepad swapped for the PC's.
+
+        The swap is redone every time because exec(_S) re-runs main.py's
+        `from mbuild import gamepad`, which puts the real one back. A reply
+        means __init__ walked every class and module name it needs.
+        """
+        if self.lv.run("_R = %s()\ngamepad = _P\nonline_debug_respond('ready')"
+                       % ENTRY, timeout=15) is None:
+            raise IOError('%s() would not construct. The classes are loaded, so '
+                          'this is __init__ itself -- a motor or servo not '
+                          'answering (M1-M4), or a name a class body uses. '
+                          'Check the USB console.' % ENTRY)
+
+    def start(self):
+        """Read, load and build: what both scripts do before the first drive."""
+        self.load(board_program(self.path))
+        self.build()
+
+    def auto(self):
+        """Read, then stop the wheels, then refresh the code, then auto_mode().
 
         The read comes first on purpose: a main.py that does not parse costs
         nothing at all -- not a frame, not even the stop -- so pressing X on a
@@ -429,34 +433,46 @@ class Auto(object):
         src = board_program(self.path)
         self.lv.run('_s()', reply=False)
         self.load(src)
-        # This is the end-to-end check: __init__ walks Wheel, Shooter and
-        # conveyor and every module name they were compiled against, so a reply
-        # means the whole graph resolved, not just the one class named above.
-        if self.lv.run("_G = %s()\nonline_debug_respond('ready')" % ENTRY,
-                       timeout=15) is None:
-            raise IOError('%s() would not construct. The classes are loaded, so '
-                          'this is __init__ itself -- a servo or motor not '
-                          'answering (M1-M4, M5 INDEX1/INDEX2, M6), or a name a '
-                          'class body uses. Check the USB console.' % ENTRY)
+        self.build()
         # retries=0 is not a detail: a retry here would run the whole auto a
         # second time. A lost reply means "no idea how it went", never "again".
-        return self.lv.run("_G.auto(%r)\n_G.stop_all()\nonline_debug_respond('done')"
-                           % side, timeout=AUTO_TIMEOUT, retries=0)
+        return self.lv.run("_R.auto_mode()\n_s()\nonline_debug_respond('done')",
+                           timeout=AUTO_TIMEOUT, retries=0)
 
 
-def start_auto(auto, side):
+def connect(port, pulse):
+    """Live mode, the helpers above, and main.py built on the board. Exits with
+    the reason (board back in run mode) if any of it does not land."""
+    lv = Live(port)
+    lv.mode(MODE_LIVE)                  # stops /main.py
+    mp = MainPy(lv, MAIN_PY)
+    try:
+        for step in setup_steps(pulse):
+            if lv.run(step, timeout=6) is None:
+                raise IOError('The board did not accept this setup step:\n\n%s'
+                              % step)
+        print('loading %s' % MAIN_PY)
+        mp.start()
+    except (SyntaxError, IOError, OSError) as exc:
+        lv.mode(MODE_RUN)
+        lv.close()
+        sys.exit(str(exc))
+    return lv, mp
+
+
+def start_auto(mp):
     """One press of the auto button. Never lets a bad main.py reach the board."""
-    print('\nauto %s: reading %s' % (side, auto.path))
+    print('\nauto: reading %s' % mp.path)
     t0 = time.time()
     try:
-        done = auto.run(side)
+        done = mp.auto()
     except SyntaxError as exc:
         print('  main.py does not compile, nothing was sent:\n    %s' % exc)
     except (IOError, OSError) as exc:
         print('  %s' % exc)
     else:
-        print('  auto %s %s after %.1f s'
-              % (side, 'finished' if done else 'gave no reply (still running?)',
+        print('  auto %s after %.1f s'
+              % ('finished' if done else 'gave no reply (still running?)',
                  time.time() - t0))
     print('back on the sticks.')
 
@@ -491,28 +507,15 @@ def main():
         idx = xinput_find()
         pad = Controller(idx) if idx is not None else None
 
-    lv = Live(sys.argv[1])
-    lv.mode(MODE_LIVE)
-    for step in setup_steps(pulse):
-        if lv.run(step, timeout=6) is None:
-            lv.mode(MODE_RUN)
-            lv.close()
-            sys.stderr.write('The board did not accept this setup step:\n\n%s\n\n'
-                             'Is it powered on, and are the motors plugged into '
-                             'M1-M4?\n' % step)
-            sys.exit(1)
-
-    auto = Auto(lv, MAIN_PY)
-    side = SIDES[0]
-    power = DEFAULT_POWER
+    lv, mp = connect(sys.argv[1], pulse)
     # The key table is only written once, in the docstring; this prints that
     # same block, cut between the usage lines above it and the note below it.
     print(__doc__.split('--keyboard\n', 1)[1]
-                 .split('\n\nMotor ports', 1)[0].strip('\n'))
-    print('\npower %d%%  pulse %.0f ms  --  live mode is on, /main.py is stopped.'
-          % (power, pulse * 1000))
-    print('input: %s   auto side: %s   auto from: %s'
-          % ('Xbox controller' if pad else 'keyboard', side, MAIN_PY))
+                 .split('\n\nKeys count', 1)[0].strip('\n'))
+    print('\npulse %.0f ms  --  live mode is on, /main.py is stopped.'
+          % (pulse * 1000))
+    print('input: %s   driving: %s.control()'
+          % ('Xbox controller' if pad else 'keyboard', ENTRY))
     prev = {}
     last = None
     had_focus = True
@@ -525,26 +528,18 @@ def main():
                 print('\n%s' % ('keys live again.' if had_focus else
                                 'terminal lost focus -- keys ignored, robot '
                                 'stopped. Click the terminal to drive.'))
-            (fwd, strafe, rot, boost, stop, quit_,
-             run_auto, flip_side) = gamepad_axes(pad) if pad else keyboard_axes()
+            lx, ly, rx, stop, quit_, run_auto = (gamepad_axes(pad) if pad
+                                                 else keyboard_axes())
             if quit_ or (pad and down('ESC')):
                 break
-            for k in '12345':
-                if down(k):
-                    power = 10 + 10 * int(k)
-            if pressed(prev, 'side', flip_side):
-                side = SIDES[(SIDES.index(side) + 1) % len(SIDES)]
-                print('\nauto side: %s' % side)
             if pressed(prev, 'auto', run_auto):
-                start_auto(auto, side)
+                start_auto(mp)
                 last = None     # board is stopped; resend whatever comes next
                 continue
-            if stop:
-                fwd = strafe = rot = 0.0
-            v = mecanum(fwd, strafe, rot, power * (BOOST if boost else 1.0))
+            v = (0, 0, 0) if stop else (lx, ly, rx)
             # Resend while moving so pulses overlap; when stopped, send the zero
             # once and then stay quiet -- the board is already stopped.
-            if v == (0, 0, 0, 0) and last == v:
+            if v == (0, 0, 0) and last == v:
                 time.sleep(IDLE_TICK)
                 continue
             # reply=True is the flow control: the board answers at the START of
@@ -554,10 +549,12 @@ def main():
             # drain at 1/PULSE per second, and the backlog -- not the radio --
             # is what turns into seconds of steering lag.
             t0 = time.time()
-            lv.run('_d(%d,%d,%d,%d)' % v, timeout=pulse + 1.0, retries=0)
+            got = lv.run('_d(%d,%d,%d)' % v, timeout=pulse + 1.0, retries=0)
             dt = time.time() - t0
-            sys.stdout.write('\r%-58s' % ('power %d%%  auto %s  %s  %.0f Hz'
-                                          % (power, side, v, 1.0 / dt if dt else 0)))
+            # No reply means control() raised board-side; the USB console has it.
+            sys.stdout.write('\r%-58s' % ('Lx %+4d  Ly %+4d  Rx %+4d  %s' % (v + (
+                '%.0f Hz' % (1.0 / dt if dt else 0) if got else
+                'NO REPLY - control() raised?',))))
             sys.stdout.flush()
             last = v
     except KeyboardInterrupt:
