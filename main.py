@@ -200,15 +200,19 @@ class conveyor:
 
     def midway_convey(self, reverse=False):
         if reverse:
-            power_expand_board.set_power(self.convey_midway, -70)
+            power_expand_board.set_power(self.convey_midway, -80)
             power_expand_board.set_power(self.convey_lower, 80)
+            power_expand_board.set_power(self.convey_upper, -100)
+
         else:
-            power_expand_board.set_power(self.convey_midway, 70)
+            power_expand_board.set_power(self.convey_midway, 80)
             power_expand_board.set_power(self.convey_lower, -80)
+            power_expand_board.set_power(self.convey_upper, 100)
 
     def midway_convey_stop(self):
         power_expand_board.set_power(self.convey_midway, 0)
         power_expand_board.set_power(self.convey_lower, 0)
+        power_expand_board.set_power(self.convey_upper, 0)
 
     def block_convey_servo_move(self):
         if not self.block_convey_servo_toggled:
@@ -268,8 +272,8 @@ class Shooter:
 
     def toggle_shooter(self):
         if not self.is_shooter_toggled:
-            power_expand_board.set_power("BL1", 17)
-            power_expand_board.set_power("BL2", 17)
+            power_expand_board.set_power("BL1", 80)
+            power_expand_board.set_power("BL2", 80)
             self.is_shooter_toggled = True
         else:
             power_expand_board.set_power("BL1", 0)
