@@ -201,18 +201,21 @@ class conveyor:
     def midway_convey(self, reverse=False):
         if reverse:
             power_expand_board.set_power(self.convey_midway, -80)
-            power_expand_board.set_power(self.convey_lower, 80)
-            power_expand_board.set_power(self.convey_upper, -100)
+            power_expand_board.set_power(self.convey_lower, 30)
+            power_expand_board.set_power(self.convey_upper, -40)
+            power_expand_board.set_power(self.sweeper, -40)
 
         else:
             power_expand_board.set_power(self.convey_midway, 80)
-            power_expand_board.set_power(self.convey_lower, -80)
-            power_expand_board.set_power(self.convey_upper, 100)
+            power_expand_board.set_power(self.convey_lower, -30)
+            power_expand_board.set_power(self.convey_upper, 40)
+            power_expand_board.set_power(self.sweeper, 40)
 
     def midway_convey_stop(self):
         power_expand_board.set_power(self.convey_midway, 0)
         power_expand_board.set_power(self.convey_lower, 0)
         power_expand_board.set_power(self.convey_upper, 0)
+        power_expand_board.set_power(self.sweeper, 0)
 
     def block_convey_servo_move(self):
         if not self.block_convey_servo_toggled:

@@ -36,6 +36,7 @@ extension repo is not the sibling `../NovaPi`.
 """
 import ctypes
 import os
+import shutil
 import sys
 import time
 
@@ -187,9 +188,13 @@ def main():
             shown = '  '.join('%s%s %d' % ('>' if n == index else ' ', c, powers[c])
                               for n, c in enumerate(CHANNELS)
                               if powers[c] or n == index)
+            # Clipped to the terminal width, not a fixed 110: a wider line
+            # wraps to a second row, and \r then only rewinds to that row's
+            # start -- each tick would push one more row down forever.
+            width = shutil.get_terminal_size((110, 20)).columns - 1
             print('\r' + ('%s  %-4s  board says %s' % (
-                shown, 'run' if running else 'stop', got)).ljust(110)[:110],
-                end='')
+                shown, 'run' if running else 'stop', got)).ljust(width)[:width],
+                end='', flush=True)
     except KeyboardInterrupt:
         pass
     finally:
