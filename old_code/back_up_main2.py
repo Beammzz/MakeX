@@ -158,19 +158,28 @@ class conveyor:
         self.block_a = "DC1"
         self.hand = "DC2"
         self.block_b = "DC3"
-        
+
         self.convey_upper = "DC4"
         self.convey_midway = "DC5"
         self.convey_lower = "DC6"
         self.sweeper = "DC7"
+
+        # Servo
         self.block_convey_servo = smartservo_class("M5", "INDEX2")
 
-        # Toggle State
+        # Toggle States
         self.is_ball_convey_toggled = False
+        self.ball_convey_reverse = False
+
         self.is_midway_convey_toggled = False
         self.block_convey_servo_toggled = False
         self.is_sweeper_toggled = False
         self.is_hand_toggled = False
+
+
+    # ============================================================
+    # BLOCK CONVEYOR
+    # ============================================================
 
     def block_convey(self, reverse=False):
         if reverse:
@@ -180,82 +189,261 @@ class conveyor:
             power_expand_board.set_power(self.block_a, 100)
             power_expand_board.set_power(self.block_b, 100)
 
+
     def block_convey_stop(self):
         power_expand_board.set_power(self.block_a, 0)
         power_expand_board.set_power(self.block_b, 0)
 
-    def ball_convey(self, reverse=False):
-        if not self.is_ball_convey_toggled:
-            if reverse:
+
+    # ============================================================
+    # BALL CONVEYOR
+    #
+    # Controls:
+    # DC4 = Upper conveyor
+    # DC6 = Lower conveyor
+    # DC7 = Sweeper
+    # ============================================================
+
+    def _apply_ball_convey(self):
+        """
+        Apply current ball conveyor state.
+
+        Priority:
+            Midway conveyor > Ball conveyor > Sweeper toggle
+
+        If midway is running, do nothing because midway currently
+        owns DC4, DC6 and DC7.
+        """
+
+        if self.is_midway_convey_toggled:
+            return
+
+        # Ball conveyor ON
+        if self.is_ball_convey_toggled:
+
+            if self.ball_convey_reverse:
+                # Reverse
                 power_expand_board.set_power(self.convey_upper, -100)
                 power_expand_board.set_power(self.convey_lower, 100)
+                power_expand_board.set_power(self.sweeper, -100)
+
             else:
+                # Forward
                 power_expand_board.set_power(self.convey_upper, 100)
                 power_expand_board.set_power(self.convey_lower, -100)
-            self.is_ball_convey_toggled = True
+                power_expand_board.set_power(self.sweeper, 100)
+
+        # Ball conveyor OFF
         else:
             power_expand_board.set_power(self.convey_upper, 0)
             power_expand_board.set_power(self.convey_lower, 0)
-            self.is_ball_convey_toggled = False
+
+            # Restore standalone sweeper state
+            if self.is_sweeper_toggled:
+                power_expand_board.set_power(self.sweeper, -10)
+            else:
+                power_expand_board.set_power(self.sweeper, 0)
+
+
+    def ball_convey(self, reverse=False):
+        """
+        Toggle ball conveyor.
+
+        Example:
+            N4 -> ball_convey()
+            Up -> ball_convey(reverse=True)
+
+        Behaviour:
+
+            OFF + N4
+                -> Forward ON
+
+            Forward + N4
+                -> OFF
+
+            OFF + Up
+                -> Reverse ON
+
+            Reverse + Up
+                -> OFF
+
+            Forward + Up
+                -> switch to Reverse
+
+            Reverse + N4
+                -> switch to Forward
+        """
+
+        # Currently OFF
+        if not self.is_ball_convey_toggled:
+            self.is_ball_convey_toggled = True
+            self.ball_convey_reverse = reverse
+
+        # Already ON
+        else:
+            # Same direction pressed again -> OFF
+            if self.ball_convey_reverse == reverse:
+                self.is_ball_convey_toggled = False
+
+            # Opposite direction pressed -> switch direction
+            else:
+                self.ball_convey_reverse = reverse
+
+        self._apply_ball_convey()
+
+
+    def ball_convey_stop(self):
+        """
+        Force ball conveyor OFF.
+        """
+
+        self.is_ball_convey_toggled = False
+        self.ball_convey_reverse = False
+
+        if not self.is_midway_convey_toggled:
+            self._apply_ball_convey()
+
+
+    # ============================================================
+    # MIDWAY CONVEYOR
+    #
+    # Midway temporarily controls:
+    # DC4
+    # DC5
+    # DC6
+    # DC7
+    # ============================================================
 
     def midway_convey(self, reverse=False):
+        """
+        Hold L2/R2 to run midway conveyor.
+
+        Midway has higher priority than ball conveyor.
+        """
+
+        self.is_midway_convey_toggled = True
+
         if reverse:
-            power_expand_board.set_power(self.convey_midway, -80)
-            power_expand_board.set_power(self.convey_lower, 30)
-            power_expand_board.set_power(self.convey_upper, -40)
+            power_expand_board.set_power(self.convey_midway, -90)
+            power_expand_board.set_power(self.convey_lower, 40)
+            power_expand_board.set_power(self.convey_upper, -50)
             power_expand_board.set_power(self.sweeper, -40)
 
         else:
-            power_expand_board.set_power(self.convey_midway, 80)
-            power_expand_board.set_power(self.convey_lower, -30)
-            power_expand_board.set_power(self.convey_upper, 40)
+            power_expand_board.set_power(self.convey_midway, 90)
+            power_expand_board.set_power(self.convey_lower, -40)
+            power_expand_board.set_power(self.convey_upper, 50)
             power_expand_board.set_power(self.sweeper, 40)
 
+
     def midway_convey_stop(self):
-        power_expand_board.set_power(self.convey_midway, 0)
-        power_expand_board.set_power(self.convey_lower, 0)
-        power_expand_board.set_power(self.convey_upper, 0)
-        power_expand_board.set_power(self.sweeper, 0)
+        """
+        Stop midway mode.
+
+        After releasing L2/R2, restore the previous ball conveyor
+        state instead of blindly stopping DC4/DC6/DC7.
+        """
+
+        if self.is_midway_convey_toggled:
+
+            self.is_midway_convey_toggled = False
+
+            # DC5 is only used by midway
+            power_expand_board.set_power(self.convey_midway, 0)
+
+            # Restore DC4 + DC6 + DC7
+            self._apply_ball_convey()
+
+
+    # ============================================================
+    # BLOCK CONVEY SERVO
+    # ============================================================
 
     def block_convey_servo_move(self):
+
         if not self.block_convey_servo_toggled:
+
             self.block_convey_servo.move_to(55, 50)
             self.block_convey_servo_toggled = True
+
         else:
+
             self.block_convey_servo.move_to(0, 50)
             self.block_convey_servo_toggled = False
 
+
+    # ============================================================
+    # SWEEPER
+    #
+    # Separate toggle for DC7.
+    #
+    # Ball conveyor and midway have higher priority.
+    # ============================================================
+
     def toggle_sweeper(self):
-        if not self.is_sweeper_toggled:
-            power_expand_board.set_power(self.sweeper, -10)
-            self.is_sweeper_toggled = True
-        else:
-            power_expand_board.set_power(self.sweeper, 0)
-            self.is_sweeper_toggled = False
-            
+
+        self.is_sweeper_toggled = not self.is_sweeper_toggled
+
+        # Don't interrupt ball conveyor or midway conveyor
+        if (
+            not self.is_midway_convey_toggled
+            and not self.is_ball_convey_toggled
+        ):
+            if self.is_sweeper_toggled:
+                power_expand_board.set_power(self.sweeper, -10)
+            else:
+                power_expand_board.set_power(self.sweeper, 0)
+
+
+    # ============================================================
+    # HAND
+    # ============================================================
+
     def toggle_hand(self):
-        # เปิดออก
+
+        # Open
         if not self.is_hand_toggled:
+
             power_expand_board.set_power(self.hand, 20)
+
             time.sleep(0.5)
+
             power_expand_board.set_power(self.hand, 0)
+
             self.is_hand_toggled = True
-        # ปิดเข้า
+
+        # Close
         else:
-            power_expand_board.set_power(self.hand, -45)
+
+            power_expand_board.set_power(self.hand, -35)
+
             self.is_hand_toggled = False
 
+
+    # ============================================================
+    # STOP ALL
+    # ============================================================
+
     def stop_all(self):
+
         power_expand_board.set_power(self.block_a, 0)
         power_expand_board.set_power(self.block_b, 0)
-        power_expand_board.set_power(self.convey_upper, 0) 
+
+        power_expand_board.set_power(self.convey_upper, 0)
         power_expand_board.set_power(self.convey_midway, 0)
         power_expand_board.set_power(self.convey_lower, 0)
+
         power_expand_board.set_power(self.sweeper, 0)
-        # รีเซ็ตเฉพาะ toggle ของตัวที่สั่งหยุดไปจริง ๆ (เซอร์โวยังค้างมุมเดิม)
+
+        # Reset states
         self.is_ball_convey_toggled = False
+        self.ball_convey_reverse = False
+
         self.is_midway_convey_toggled = False
         self.is_sweeper_toggled = False
+
+        # Hand and block servo states are intentionally not reset
+        # because stop_all() does not physically move them.
 
 # Consist of Brushless Motor and Shooter Servo
 class Shooter:
@@ -275,8 +463,8 @@ class Shooter:
 
     def toggle_shooter(self):
         if not self.is_shooter_toggled:
-            power_expand_board.set_power("BL1", 80)
-            power_expand_board.set_power("BL2", 80)
+            power_expand_board.set_power("BL1", 100)
+            power_expand_board.set_power("BL2", 100)
             self.is_shooter_toggled = True
         else:
             power_expand_board.set_power("BL1", 0)
@@ -324,11 +512,10 @@ class Guzzchan:
             time.sleep(0.1)
 
         if self._pressed("N1"):
-            self.conveyor.ball_convey()
-            time.sleep(0.1)
+            pass
 
         if self._pressed("N4"):
-            self.conveyor.toggle_sweeper()
+            self.conveyor.ball_convey()
             time.sleep(0.1)
 
         if gamepad.is_key_pressed("L1"):
