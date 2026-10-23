@@ -2,13 +2,13 @@
   "workbench.editorAssociations": {
     "*.md": "vscode.markdown.preview.editor"
   },
-  "novapi.port": "COM5",
+  "novapi.port": "/dev/ttyUSB0",
   // Absolute path to a real interpreter, because VS Code exec's this directly as
   // a terminal shellPath -- no shell, no PATH lookup. "python" on PATH resolves
   // here too, but the WindowsApps alias next to it is a Store reparse point that
   // conpty cannot launch ("File not found: )"). This one has pyserial 3.5 and
   // bleak 3.0.2, so both the serial and the Bluetooth transports work.
-  "novapi.pythonPath": "C:\\Users\\Windows 11\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+  "novapi.pythonPath": "/home/harumi/.nix-profile/bin/python3",
   // Board-only time.pyi (sleep_ms/ticks_diff) was shadowing real time.time()
   // for PC-side scripts too (novapi_live.py, novapi_teleop.py). main.py only
   // calls time.sleep(), which both stubs have, so nothing board-side loses
@@ -17,6 +17,9 @@
   // scripts/*.py หา live.py จาก ../NovaPi ข้าง ๆ repo ซึ่งไม่มีในเครื่องนี้ --
   // ชี้ไปที่ scripts/ ของ extension ที่ติดตั้งไว้แทน ตัวแปรนี้ VS Code ใส่ให้ทุก
   // terminal รวมถึงที่ "NovaPi: Run Script" เปิด (extension เองไม่ได้ตั้งให้)
+  "terminal.integrated.env.linux": {
+    "NOVAPI_SCRIPTS": "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts"
+  },
   "terminal.integrated.env.windows": {
     "NOVAPI_SCRIPTS": "C:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
   },
@@ -30,8 +33,6 @@
     "/home/harumi/.vscode/extensions/makeblock-community.novapi-companion-0.1.0/scripts",
     "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
     "c:\\Users\\kongj\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts",
-    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\stubs",
-    "c:\\Users\\Sorra\\.vscode\\extensions\\makeblock-community.novapi-companion-0.1.0\\scripts"
   ],
   "python.analysis.diagnosticSeverityOverrides": {
     "reportMissingModuleSource": "none"
