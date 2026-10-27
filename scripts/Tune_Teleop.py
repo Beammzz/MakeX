@@ -47,13 +47,13 @@ exit, so this script owns the board. Commands run one at a time, in order, and a
 snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
-Keys are read with the Windows key-state API, the same way `Teleop.py` and
-`Test_DC.py` do it, so a held key really reads as held instead of waiting out
-the OS auto-repeat delay. It also means keys register while another window has
-focus.
+Keys come from `kbd.py`: on Windows the key-state API (true held state, works
+even when another window has focus -- stop the motors before going off to
+type); on Linux the terminal's key repeat, so only the terminal running this
+script gets keys, and a key reads as held while it keeps repeating (a tap
+counts as held for about half a second).
 """
 import ast
-import ctypes
 import sys
 import time
 
@@ -62,6 +62,7 @@ import time
 from Teleop import DEFAULT_PULSE as PULSE, IDLE_TICK, connect
 import pc_gamepad as gamepad                    # noqa: E402
 from live import MODE_RUN                       # noqa: E402
+from kbd import down                         # noqa: E402
 
 # main.py's module-level trim lists, each in its motor order.
 TRIMS = ('TRIM_FORWARD', 'TRIM_BACKWARD', 'TRIM_LEFT', 'TRIM_RIGHT')
@@ -90,23 +91,6 @@ def board_set(slot, v):
     if i is None:
         return '_R.wheel.%s = %d' % (name, v)
     return '%s[%d] = %.2f' % (name, i, v)
-
-
-# Virtual-key codes for GetAsyncKeyState (same table style as Test_DC.py).
-VK = {'UP': 0x26, 'DOWN': 0x28, 'LEFT': 0x25, 'RIGHT': 0x27, 'R': 0x52,
-      'P': 0x50, 'ESC': 0x1B, '0': 0x30, 'SHIFT': 0x10,
-      'W': 0x57, 'A': 0x41, 'S': 0x53, 'D': 0x44, 'Q': 0x51, 'E': 0x45}
-VK.update((d, 0x30 + int(d)) for d in JUMP)
-
-_user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
-
-
-def down(key):
-    """True while `key` is held. Always False where there is no key-state API,
-    so a gamepad-only run on another platform still works."""
-    if _user32 is None:
-        return False
-    return bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
 
 
 def paste_block(value):

@@ -136,6 +136,7 @@ _bootstrap()
 
 from live import Live, MODE_LIVE, MODE_RUN            # noqa: E402  (needs sys.path)
 from xinput import Controller, find as xinput_find    # noqa: E402
+from kbd import down as kbd_down                      # noqa: E402
 
 # Board-side auto-stop, the deadman -- and the loop's tick, since the board is
 # busy for exactly this long per command. 0.08 s is ~13 Hz with ~55 ms of slack
@@ -281,6 +282,8 @@ def focused():
     window, which a ConPTY host such as VS Code does not have) or a window of a
     process hosting us, hence the two checks.
     """
+    if _user32 is None:
+        return True                     # a terminal only gets keys when focused
     hwnd = _user32.GetForegroundWindow()
     if not hwnd:
         return False
@@ -293,6 +296,8 @@ def focused():
 
 def down(key):
     """Held-key state, but only while our terminal is in front."""
+    if _user32 is None:
+        return kbd_down(key)            # terminal key repeat, see kbd.py
     return focused() and bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
 
 
@@ -480,9 +485,6 @@ def start_auto(mp):
 # ------------------------------------------------------------------- main --
 
 def main():
-    if _user32 is None:
-        sys.stderr.write('Teleop.py uses the Windows key-state API.\n')
-        sys.exit(2)
     if len(sys.argv) < 2:
         sys.stderr.write('Usage: Teleop.py <port> [--keyboard] [--pulse SECONDS]\n')
         sys.exit(2)

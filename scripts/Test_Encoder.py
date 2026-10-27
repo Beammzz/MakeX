@@ -49,10 +49,11 @@ exit, so this script owns the board. Commands run one at a time, in order, and a
 snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
-Keys are read with the Windows key-state API, the same way `Test_DC.py` does it,
-so a held key really reads as held instead of waiting out the OS auto-repeat
-delay. It also means keys register while another window has focus: stop the
-wheels before going off to type somewhere else.
+Keys come from `kbd.py`: on Windows the key-state API (true held state, works
+even when another window has focus -- stop the motors before going off to
+type); on Linux the terminal's key repeat, so only the terminal running this
+script gets keys, and a key reads as held while it keeps repeating (a tap
+counts as held for about half a second).
 
 `live` lives in the extension's `scripts/` folder, not next to this file;
 `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS` if the
@@ -80,6 +81,7 @@ _bootstrap()
 
 from live import (Live, MODE_LIVE, MODE_RUN,    # noqa: E402  (needs sys.path first)
                   online_debug_respond)         # board builtin; see live.py
+from kbd import down                         # noqa: E402
 
 PULSE = 0.25        # seconds a drive command holds before the board stops the wheels
 POWER_STEP = 5      # how much Up/Down change power per tick, -100..100
@@ -96,23 +98,12 @@ DIGITS = tuple('%d' % n for n in range(1, len(MOTORS) + 1))
 # separators, so there is no None to send back.
 NO_VALUE = -99999
 
-# Virtual-key codes for GetAsyncKeyState (same table style as Test_DC.py).
-VK = {'UP': 0x26, 'DOWN': 0x28, 'SPACE': 0x20, 'A': 0x41, 'M': 0x4D,
-      'R': 0x52, 'Z': 0x5A, 'ESC': 0x1B, '0': 0x30}
-VK.update((d, 0x30 + n) for n, d in enumerate(DIGITS, 1))
-
-_user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
-
-
-def down(key):
-    return bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
-
 
 def enable_ansi():
     """Turn on VT processing so the table can redraw over itself. False when the
     console will not do it, or output is redirected to a file, and the display
     falls back to the single line the other test scripts use."""
-    if _user32 is None:
+    if sys.platform != 'win32':
         return True                     # other terminals already speak ANSI
     kernel32 = ctypes.windll.kernel32
     handle = kernel32.GetStdHandle(-11)             # STD_OUTPUT_HANDLE
@@ -240,8 +231,6 @@ def show(lines, ansi, first):
 
 
 def main():
-    if _user32 is None:
-        sys.exit('Test_Encoder.py uses the Windows key-state API.')
     if len(sys.argv) < 2:
         sys.exit('Usage: %s <port> [power|speed]   (e.g. COM6 speed)'
                  % os.path.basename(sys.argv[0]))

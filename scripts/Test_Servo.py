@@ -71,17 +71,16 @@ exit, so this script owns the board. Commands run one at a time, in order, and a
 snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
-Keys are read with the Windows key-state API, the same way `Test_Shooter.py` and
-`Test_VDC.py` do it, so a held key really reads as held instead of waiting out
-the OS auto-repeat delay. It also means keys register while another window has
-focus: disarm before going off to type somewhere else. Off Windows the keyboard
-half is simply inactive and the gamepad still drives the test.
+Keys come from `kbd.py`: on Windows the key-state API (true held state, works
+even when another window has focus -- stop the motors before going off to
+type); on Linux the terminal's key repeat, so only the terminal running this
+script gets keys, and a key reads as held while it keeps repeating (a tap
+counts as held for about half a second).
 
 `live` and `pc_gamepad` live in the extension's `scripts/` folder, not next to
 this file; `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS`
 if the extension repo is not the sibling `../NovaPi`.
 """
-import ctypes
 import os
 import sys
 import time
@@ -104,6 +103,8 @@ _bootstrap()
 import pc_gamepad as gamepad                    # noqa: E402  (needs sys.path first)
 from live import (Live, MODE_LIVE, MODE_RUN,    # noqa: E402
                   online_debug_respond)         # board builtin; see live.py
+import kbd                                  # noqa: E402
+from kbd import down                         # noqa: E402
 
 ANGLE_STEP = 5      # degrees per tilt command
 SPEED = 20          # starting move speed; the smartservo docs allow 1..50
@@ -120,22 +121,6 @@ DIGITS = tuple('%d' % n for n in range(1, 7))
 # Board-side stand-in for "the servo did not answer": a reply is a string of
 # digits or nothing at all, so there is no None to send back.
 NO_ANGLE = -9999
-
-# Virtual-key codes for GetAsyncKeyState (same table style as Test_DC.py).
-# 0xDB and 0xDD are [ and ] on a US layout.
-VK = {'UP': 0x26, 'DOWN': 0x28, 'LEFT': 0x25, 'RIGHT': 0x27,
-      'H': 0x48, 'Z': 0x5A, 'V': 0x56, 'ESC': 0x1B, '[': 0xDB, ']': 0xDD}
-VK.update((d, 0x30 + n) for n, d in enumerate(DIGITS, 1))
-
-_user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
-
-
-def down(key):
-    """True while `key` is held. Always False where there is no key-state API,
-    so a gamepad-only run on another platform still works."""
-    if _user32 is None:
-        return False
-    return bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
 
 
 def angle_of(reply, previous):
@@ -264,8 +249,8 @@ def main():
     print('         X = home, Y = set zero, BACK/Select = quit')
     print('no servo is commanded at startup, and changing port or index disarms:')
     print('this only reads the angle back until you arm it.')
-    if _user32 is None:
-        print('not on Windows: keyboard control is off, gamepad only')
+    if not kbd.available():
+        print('no terminal for keys: keyboard control is off, gamepad only')
     elif not gamepad.is_connected():
         print('no controller found; the keyboard drives this (plug one in any time)')
 

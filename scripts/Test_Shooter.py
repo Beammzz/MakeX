@@ -65,17 +65,16 @@ exit, so this script owns the board. Commands run one at a time, in order, and a
 snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
-Keys are read with the Windows key-state API, the same way `teleop.py` and
-`Test_DC.py` do it, so a held key really reads as held instead of waiting out
-the OS auto-repeat delay. It also means keys register while another window has
-focus: stop the motors before going off to type somewhere else. Off Windows the
-keyboard half is simply inactive and the gamepad still drives the test.
+Keys come from `kbd.py`: on Windows the key-state API (true held state, works
+even when another window has focus -- stop the motors before going off to
+type); on Linux the terminal's key repeat, so only the terminal running this
+script gets keys, and a key reads as held while it keeps repeating (a tap
+counts as held for about half a second).
 
 `live` and `pc_gamepad` live in the extension's `scripts/` folder, not next to
 this file; `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS`
 if the extension repo is not the sibling `../NovaPi`.
 """
-import ctypes
 import os
 import sys
 import time
@@ -98,6 +97,8 @@ _bootstrap()
 import pc_gamepad as gamepad                    # noqa: E402  (needs sys.path first)
 from live import (Live, MODE_LIVE, MODE_RUN,    # noqa: E402
                   online_debug_respond)         # board builtin; see live.py
+import kbd                                  # noqa: E402
+from kbd import down                         # noqa: E402
 
 PULSE = 0.25        # seconds a command holds before the board stops the motor
 STEP = 1            # how much the controls change power per tick, 0..100
@@ -116,21 +117,6 @@ NO_ANGLE = -9999
 
 # The two dedicated brushless outputs, in the order the cursor walks them.
 MOTORS = ['BL1', 'BL2']
-
-# Virtual-key codes for GetAsyncKeyState (same table style as Test_DC.py).
-VK = {'UP': 0x26, 'DOWN': 0x28, 'LEFT': 0x25, 'RIGHT': 0x27,
-      'SPACE': 0x20, 'R': 0x52, 'H': 0x48, 'Z': 0x5A, 'V': 0x56, 'ESC': 0x1B,
-      '0': 0x30, '1': 0x31, '2': 0x32}
-
-_user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
-
-
-def down(key):
-    """True while `key` is held. Always False where there is no key-state API,
-    so a gamepad-only run on another platform still works."""
-    if _user32 is None:
-        return False
-    return bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
 
 
 def angle_of(reply, previous):
@@ -250,8 +236,8 @@ def main():
     print('         X = home, Y = set zero, BACK/Select = quit')
     print('the servo is NOT commanded at startup: it holds its position and')
     print('this only reads the angle back until you arm it.')
-    if _user32 is None:
-        print('not on Windows: keyboard control is off, gamepad only')
+    if not kbd.available():
+        print('no terminal for keys: keyboard control is off, gamepad only')
     elif not gamepad.is_connected():
         print('no controller found; the keyboard drives this (plug one in any time)')
 

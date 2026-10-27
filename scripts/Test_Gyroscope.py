@@ -45,7 +45,6 @@ check the USB console if a command silently does nothing.
 `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS` if the
 extension repo is not the sibling `../NovaPi`.
 """
-import ctypes
 import os
 import sys
 import time
@@ -67,23 +66,11 @@ _bootstrap()
 
 from live import (Live, MODE_LIVE, MODE_RUN,    # noqa: E402  (needs sys.path first)
                   online_debug_respond)         # board builtin; see live.py
+from kbd import down                         # noqa: E402
 
 POLL = 0.10             # seconds between reads
 HOLD = 1.0              # seconds a shake stays lit on screen
 DEFAULT_SHAKE = 50      # 0..100, the firmware default
-
-# Virtual-key codes for GetAsyncKeyState (same table style as Test_Shooter.py).
-VK = {'R': 0x52, 'Z': 0x5A, 'ESC': 0x1B}
-
-_user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
-
-
-def down(key):
-    """True while `key` is held. Always False where there is no key-state API,
-    so the readout still runs on another platform -- only the resets go away."""
-    if _user32 is None:
-        return False
-    return bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
 
 
 # ---------------------------------------------------------------- board side --

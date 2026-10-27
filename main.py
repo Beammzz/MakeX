@@ -44,59 +44,59 @@ class Wheel:
             encoder_motor_class(LOWER_RIGHT, 'INDEX1')
         ]
         
-        self.slow_speed = 75
-        self.normal_speed = 200
+        self.slow_speed = 40
+        self.normal_speed = 75
         self.slide = [-1, 1, 1, -1]
         self.rotate = [1, 1, -1, -1]
         
         
     def move_forward(self):
         for i in range(4):
-            self.motors[i].set_speed((self.normal_speed * TRIM_FORWARD[i]) * REVERSE[i])
+            self.motors[i].set_power((self.normal_speed * TRIM_FORWARD[i]) * REVERSE[i])
             
     def move_backward(self):
         for i in range(4):
-            self.motors[i].set_speed(-(self.normal_speed * TRIM_BACKWARD[i]) * REVERSE[i])
+            self.motors[i].set_power(-(self.normal_speed * TRIM_BACKWARD[i]) * REVERSE[i])
             
     def move_left(self):
         for i in range(4):
-            self.motors[i].set_speed(-(self.normal_speed * TRIM_LEFT[i]) * REVERSE[i] * self.slide[i])
+            self.motors[i].set_power(-(self.normal_speed * TRIM_LEFT[i]) * REVERSE[i] * self.slide[i])
             
     def move_right(self):
         for i in range(4):
-            self.motors[i].set_speed((self.normal_speed * TRIM_RIGHT[i]) * REVERSE[i] * self.slide[i])
+            self.motors[i].set_power((self.normal_speed * TRIM_RIGHT[i]) * REVERSE[i] * self.slide[i])
             
     def move_slow_forward(self):
         for i in range(4):
-            self.motors[i].set_speed((self.slow_speed * TRIM_FORWARD[i]) * REVERSE[i])
+            self.motors[i].set_power((self.slow_speed * TRIM_FORWARD[i]) * REVERSE[i])
             
     def move_slow_backward(self):
         for i in range(4):
-            self.motors[i].set_speed(-(self.slow_speed * TRIM_BACKWARD[i]) * REVERSE[i])
+            self.motors[i].set_power(-(self.slow_speed * TRIM_BACKWARD[i]) * REVERSE[i])
             
     def move_slow_left(self):
         for i in range(4):
-            self.motors[i].set_speed(-(self.slow_speed * TRIM_LEFT[i]) * REVERSE[i] * self.slide[i])
+            self.motors[i].set_power(-(self.slow_speed * TRIM_LEFT[i]) * REVERSE[i] * self.slide[i])
             
     def move_slow_right(self):
         for i in range(4):
-            self.motors[i].set_speed((self.slow_speed * TRIM_RIGHT[i]) * REVERSE[i] * self.slide[i])
+            self.motors[i].set_power((self.slow_speed * TRIM_RIGHT[i]) * REVERSE[i] * self.slide[i])
             
     def rotate_left(self):
         for i in range(4):
-            self.motors[i].set_speed(self.normal_speed * REVERSE[i] * self.rotate[i])
+            self.motors[i].set_power(self.normal_speed * REVERSE[i] * self.rotate[i])
             
     def rotate_right(self):
         for i in range(4):
-            self.motors[i].set_speed(-self.normal_speed * REVERSE[i] * self.rotate[i])
+            self.motors[i].set_power(-self.normal_speed * REVERSE[i] * self.rotate[i])
             
     def rotate_slow_left(self):
         for i in range(4):
-            self.motors[i].set_speed(self.slow_speed * REVERSE[i] * self.rotate[i])
+            self.motors[i].set_power(self.slow_speed * REVERSE[i] * self.rotate[i])
             
     def rotate_slow_right(self):
         for i in range(4):
-            self.motors[i].set_speed(-self.slow_speed * REVERSE[i] * self.rotate[i])
+            self.motors[i].set_power(-self.slow_speed * REVERSE[i] * self.rotate[i])
 
     def stop(self):
         for i in range(4):
