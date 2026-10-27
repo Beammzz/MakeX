@@ -20,6 +20,7 @@ print(r"""
 """)
 
 # จูนตรงนี้น่ะคร้าบ
+# ล้อ
 UPPER_LEFT = "M1"
 LOWER_LEFT = "M2"
 UPPER_RIGHT = "M3"
@@ -33,6 +34,22 @@ TRIM_FORWARD = [1, 1, 1, 1]
 TRIM_BACKWARD = [1, 1, 1, 1]
 TRIM_LEFT = [1, 1, 1, 1]
 TRIM_RIGHT = [1, 1, 1, 1]
+
+# สายพาน
+DC_BALL_SHOOTER = "DC3"
+DC_BALL_CONVEYOR = "DC2"
+DC_BALL_FEEDER = "DC1"
+
+DC_BLOCK_A = "DC4"
+DC_BLOCK_B = "DC5"
+
+# ที่ยิง
+SHOOTER = "BL1"
+SIXSEVEN_SERVO = "M6"
+
+# ลิฟท์
+DC_CONE_LIFT = "DC6"
+
 
 class Wheel:
     def __init__(self) -> None:
@@ -102,14 +119,77 @@ class Wheel:
             self.motors[i].stop()
 
 class Conveyor:
-    pass
+    def __init__(self) -> None:
+        # Ball convey
+        self.ball_shooter = DC_BALL_SHOOTER
+        self.ball_conveyor = DC_BALL_CONVEYOR
+        self.ball_feeder = DC_BALL_FEEDER
+        self.ball_conveyor_toggle = False
+
+        # Block convey
+        self.block_a = DC_BLOCK_A
+        self.block_b = DC_BLOCK_B
+
+    def toggle_ball_conveyor(self):
+        if not self.ball_conveyor_toggle:
+            power_expand_board.set_power(self.ball_feeder, 60)
+            power_expand_board.set_power(self.ball_conveyor, 60)
+            power_expand_board.set_power(self.ball_shooter, 60)
+            self.ball_conveyor_toggle = True
+        else:
+            power_expand_board.set_power(self.ball_feeder, 0)
+            power_expand_board.set_power(self.ball_conveyor, 0)
+            power_expand_board.set_power(self.ball_shooter, 0)
+            self.ball_conveyor_toggle = False
+
+    def block_convey(self, reverse=False):
+            if reverse:
+                power_expand_board.set_power(self.block_a, -60)
+                power_expand_board.set_power(self.block_b, -60)
+            else:
+                power_expand_board.set_power(self.block_a, 60)
+                power_expand_board.set_power(self.block_b, 60)
+
+    def block_convey_stop(self):
+        power_expand_board.set_power(self.block_a, 0)
+        power_expand_board.set_power(self.block_b, 0)
+        
+class Lift:
+    def __init__(self) -> None:
+        self.cone_lift = DC_CONE_LIFT
+        
+    def lift_cone(self, reverse=False):
+        if reverse:
+            power_expand_board.set_power(self.cone_lift, -60)
+        else:
+            power_expand_board.set_power(self.cone_lift, 60)
+            
+    def stop_lift(self):
+        power_expand_board.set_power(self.cone_lift, 0)
+
 
 class Shooter:
-    pass
+    def __init__(self) -> None:
+        self.shooter = SHOOTER
+        self.sixseven = smartservo_class(SIXSEVEN_SERVO, "INDEX1")
+        self.shooter_toggle = False
+
+    def toggle_shooter(self):
+        if not self.shooter_toggle:
+            power_expand_board.set_power(self.shooter, 100)
+            self.sixseven.set_power(60)
+            self.shooter_toggle = True
+        else:
+            power_expand_board.set_power(self.shooter, 0)
+            self.sixseven.set_power(0)
+            self.shooter_toggle = False
             
 class Guzzchan:
     def __init__(self) -> None:
         self.wheel = Wheel()
+        self.conveyor = Conveyor()
+        self.shooter = Shooter()
+        self.lift = Lift()
         self._prev_keys = {}
 
     def _pressed(self, key):
@@ -150,7 +230,42 @@ class Guzzchan:
             self.wheel.move_slow_backward()
         else:
             self.wheel.stop()
+
+        if self._pressed("N1"):
+            self.conveyor.toggle_ball_conveyor()
+
+        if self._pressed("+"):
+            self.shooter.toggle_shooter()  
+
+
+        if gamepad.is_key_pressed("L2") or gamepad.is_key_pressed("R2"):
+            if self.conveyor.ball_conveyor_toggle:
+                self.conveyor.toggle_ball_conveyor()
+        if gamepad.is_key_pressed("L2"):
+            power_expand_board.set_power(self.conveyor.ball_shooter, -100)
+            power_expand_board.set_power(self.conveyor.ball_conveyor, -100)
+        elif gamepad.is_key_pressed("R2"):
+            power_expand_board.set_power(self.conveyor.ball_shooter, 100)
+            power_expand_board.set_power(self.conveyor.ball_conveyor, 100)
+        elif not self.conveyor.ball_conveyor_toggle:
+            power_expand_board.set_power(self.conveyor.ball_shooter, 0)
+            power_expand_board.set_power(self.conveyor.ball_conveyor, 0)
+            
+            
+
+        if gamepad.is_key_pressed("L1"):
+            self.conveyor.block_convey()
+        elif gamepad.is_key_pressed("R1"):
+            self.conveyor.block_convey(reverse=True)
+        else:
+            self.conveyor.block_convey_stop()
         
+        if gamepad.is_key_pressed("N2"):
+            self.lift.lift_cone()
+        elif gamepad.is_key_pressed("N3"):
+            self.lift.lift_cone(reverse=True)
+        else:
+            self.lift.stop_lift()
 
 robot = Guzzchan()
             
