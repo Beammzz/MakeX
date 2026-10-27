@@ -23,13 +23,12 @@ print(r"""
 # ล้อ
 UPPER_LEFT = "M1"
 LOWER_LEFT = "M2"
-UPPER_RIGHT = "M3"
+UPPER_RIGHT = "M5"
 LOWER_RIGHT = "M4"
 
-REVERSE = [1, 1, -1, -1]
+REVERSE = [1, 1, 1, -1]
 SLOW_SPEED = 40
 NORMAL_SPEED = 75
-
 TRIM_FORWARD = [1, 1, 1, 1]
 TRIM_BACKWARD = [1, 1, 1, 1]
 TRIM_LEFT = [1, 1, 1, 1]
@@ -124,6 +123,7 @@ class Conveyor:
         self.ball_shooter = DC_BALL_SHOOTER
         self.ball_conveyor = DC_BALL_CONVEYOR
         self.ball_feeder = DC_BALL_FEEDER
+        self.sixseven = smartservo_class(SIXSEVEN_SERVO, "INDEX1")
         self.ball_conveyor_toggle = False
 
         # Block convey
@@ -144,11 +144,11 @@ class Conveyor:
 
     def block_convey(self, reverse=False):
             if reverse:
-                power_expand_board.set_power(self.block_a, -60)
-                power_expand_board.set_power(self.block_b, -60)
+                power_expand_board.set_power(self.block_a, -100)
+                power_expand_board.set_power(self.block_b, -100)
             else:
-                power_expand_board.set_power(self.block_a, 60)
-                power_expand_board.set_power(self.block_b, 60)
+                power_expand_board.set_power(self.block_a, 100)
+                power_expand_board.set_power(self.block_b, 100)
 
     def block_convey_stop(self):
         power_expand_board.set_power(self.block_a, 0)
@@ -171,17 +171,14 @@ class Lift:
 class Shooter:
     def __init__(self) -> None:
         self.shooter = SHOOTER
-        self.sixseven = smartservo_class(SIXSEVEN_SERVO, "INDEX1")
         self.shooter_toggle = False
 
     def toggle_shooter(self):
         if not self.shooter_toggle:
             power_expand_board.set_power(self.shooter, 100)
-            self.sixseven.set_power(60)
             self.shooter_toggle = True
         else:
             power_expand_board.set_power(self.shooter, 0)
-            self.sixseven.set_power(0)
             self.shooter_toggle = False
             
 class Guzzchan:
@@ -244,13 +241,15 @@ class Guzzchan:
         if gamepad.is_key_pressed("L2"):
             power_expand_board.set_power(self.conveyor.ball_shooter, -100)
             power_expand_board.set_power(self.conveyor.ball_conveyor, -100)
+            self.conveyor.sixseven.set_power(60)
         elif gamepad.is_key_pressed("R2"):
             power_expand_board.set_power(self.conveyor.ball_shooter, 100)
             power_expand_board.set_power(self.conveyor.ball_conveyor, 100)
+            self.conveyor.sixseven.set_power(60)
         elif not self.conveyor.ball_conveyor_toggle:
             power_expand_board.set_power(self.conveyor.ball_shooter, 0)
             power_expand_board.set_power(self.conveyor.ball_conveyor, 0)
-            
+            self.conveyor.sixseven.set_power(0)
             
 
         if gamepad.is_key_pressed("L1"):
