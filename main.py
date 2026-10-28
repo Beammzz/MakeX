@@ -37,7 +37,7 @@ TRIM_RIGHT = [1, 1, 1, 1]
 # สายพาน
 DC_BALL_SHOOTER = "DC3"
 DC_BALL_CONVEYOR = "DC2"
-DC_BALL_FEEDER = "DC1"
+DC_BALL_FEEDER = "DC6"
 
 DC_BLOCK_A = "DC4"
 DC_BLOCK_B = "DC5"
@@ -47,7 +47,7 @@ SHOOTER = "BL1"
 SIXSEVEN_SERVO = "M6"
 
 # ลิฟท์
-DC_CONE_LIFT = "DC6"
+DC_CONE_LIFT = "DC1"
 
 
 class Wheel:
