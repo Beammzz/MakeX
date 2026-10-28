@@ -48,6 +48,7 @@ SIXSEVEN_SERVO = "M6"
 
 # ลิฟท์
 DC_CONE_LIFT = "DC1"
+DC_HAND = "DC7"
 
 
 class Wheel:
@@ -144,11 +145,11 @@ class Conveyor:
 
     def block_convey(self, reverse=False):
             if reverse:
-                power_expand_board.set_power(self.block_a, -100)
-                power_expand_board.set_power(self.block_b, -100)
-            else:
                 power_expand_board.set_power(self.block_a, 100)
                 power_expand_board.set_power(self.block_b, 100)
+            else:
+                power_expand_board.set_power(self.block_a, -100)
+                power_expand_board.set_power(self.block_b, -100)
 
     def block_convey_stop(self):
         power_expand_board.set_power(self.block_a, 0)
@@ -157,7 +158,8 @@ class Conveyor:
 class Lift:
     def __init__(self) -> None:
         self.cone_lift = DC_CONE_LIFT
-        
+        self.hand = DC_HAND
+
     def lift_cone(self, reverse=False):
         if reverse:
             power_expand_board.set_power(self.cone_lift, -60)
@@ -165,7 +167,16 @@ class Lift:
             power_expand_board.set_power(self.cone_lift, 60)
             
     def stop_lift(self):
-        power_expand_board.set_power(self.cone_lift, 0)
+        power_expand_board.set_power(self.cone_lift, 5)
+        
+    def hand_hold(self, reverse=False):
+            if reverse:
+                power_expand_board.set_power(self.hand, 80)
+            else:
+                power_expand_board.set_power(self.hand, -80)
+                
+    def stop_hand(self):
+        power_expand_board.set_power(self.hand, 0)
 
 
 class Shooter:
@@ -265,6 +276,15 @@ class Guzzchan:
             self.lift.lift_cone(reverse=True)
         else:
             self.lift.stop_lift()
+            
+        if gamepad.is_key_pressed("Left"):
+            self.lift.hand_hold()
+            
+        elif gamepad.is_key_pressed("Right"):
+            self.lift.hand_hold(reverse=True)
+        else:
+            self.lift.stop_hand()
+
 
 robot = Guzzchan()
             
@@ -272,7 +292,7 @@ while True:
     if power_manage_module.is_auto_mode():
         time.sleep(0.1)
         while power_manage_module.is_auto_mode():
-            time.sleep(0.1)
+            time.sleep(0.2)
             
     else:
         robot.control()
