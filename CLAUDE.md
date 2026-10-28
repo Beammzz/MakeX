@@ -11,8 +11,10 @@ power_expand_board, power_manage_module, timer. Check the relevant file for
 method names, parameter ranges, and sign conventions instead of guessing.
 
 ## Layout
-- `main.py` — teleop + auto. The only file that runs on the robot; only
-  top-level `.py` files get uploaded.
+- `main.py` — teleop and main loop. Entry point on the robot; only top-level
+  `.py` files get uploaded.
+- `auto.py` — `auto_mode(robot, side)`, called once from `main.py` when auto
+  starts. Must never `import main` (it would re-run main.py on the board).
 - `scripts/` — PC-side live-control and test scripts run over the radio, never
   uploaded. Copy `scripts/template.py` for a new one and read its docstring:
   live mode stops `/main.py` while it runs.

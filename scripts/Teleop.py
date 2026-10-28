@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Drive the robot from the PC through main.py's own code, and fire
-`Guzzchan.auto_mode()` without leaving teleop.
+"""Drive the robot from the PC through main.py's own code, and run auto
+without leaving teleop.
 
 A copy of the extension's `teleop.py`, changed in two ways: the sticks drive
 main.py's `Guzzchan.control()` on the board instead of a mix of their own, and
-a button re-reads `main.py`, ships it and runs `auto_mode()` there. Copied
+a button re-reads `auto.py`, ships it and runs `Guzzchan.auto()` there. Copied
 rather than imported because the extension's script is not ours to edit, and
 because it is worth reading -- most of HOW THE DRIVING WORKS is its original
 text.
@@ -14,7 +14,7 @@ text.
 
     W / S   forward / backward        Q / E   rotate left / right
     A / D   strafe left / right       SHIFT   slow speed   SPACE  stop
-    X       run auto_mode() -- re-reads main.py first
+    X       run auto -- re-reads auto.py first
     ESC     quit (stops motors, restarts main.py)
 
     Xbox: left stick drives/strafes, right stick X rotates, B stop,
@@ -29,44 +29,51 @@ a stop. A gamepad is read whatever has focus -- it is not the machine's keyboard
 MAIN.PY ON THE BOARD
 ====================
 
-**Driving is main.py's code, not a copy.** At startup main.py's imports,
-constants and classes are shipped to the board and a `Guzzchan` is built there.
-Its `gamepad` is then swapped for a stand-in, and every pulse puts the PC's
-stick values into that stand-in and calls `Guzzchan.control()`. So the stick
-thresholds, the two speeds, REVERSE and every TRIM are exactly main.py's --
-nothing here needs keeping in step with it. Keys are a full stick (100, the
-normal speed); SHIFT makes them half a stick (50, the slow speed).
+**Driving is main.py's code, not a copy.** At startup main.py and every module
+it imports from this folder (wheel.py, conveyor.py, ...) are shipped to the
+board and a `Guzzchan` is built there. Its `gamepad` is then swapped for a
+stand-in, and every pulse puts the PC's stick values into that stand-in and
+calls `Guzzchan.control()`. So the deadzone, the speeds, REVERSE and every TRIM
+are exactly the modules' own -- nothing here needs keeping in step with them.
+Keys are a full stick (100); SHIFT makes them half a stick (50).
 
-**The file is read at startup and when you press X, not when you save it.** A
-half-written main.py sitting in the editor is nothing to the board until you
-ask for it, so saving mid-session can never light the board up red in the
-middle of a drive. Nothing is watched, nothing uploads in the background.
+**Every module lives in RAM, not in the board's flash.** Each file is reassembled
+into `_S` (live.py's chunked path) and exec'd into a dict of its own, kept
+board-side in `_M` under the module's name. Functions defined there look their
+globals up in that dict, so the dict behaves as the module, for the whole
+session. A `from wheel import Wheel` is rewritten on the PC into
+`Wheel = _M['wheel']['Wheel']`, which is why modules load in import order and
+why a circular import (conveyor importing main, say) is refused before anything
+is sent. Whatever copies of these files sit on the flash are never imported.
+Local modules must be imported as `from x import y`; a plain `import x` of one is
+refused with a message.
 
-**A main.py that does not compile never leaves the PC.** `board_program()`
-parses it here with `ast`, so a typo costs a printed SyntaxError; the board is
-not touched at all and keeps driving the code it already has. At startup there
-is nothing to fall back on, so it is an exit instead.
+**X re-reads auto.py and nothing else.** It re-sends auto.py if it changed,
+points every `from auto import ...` name at the new copy, builds a fresh
+`Guzzchan` and calls its `auto()` -- the same path the real match takes, minus
+`power_manage_module.is_auto_mode()`. That fresh one then carries on driving.
+Edits to main.py or the other modules need a Teleop restart. Nothing is
+watched and nothing uploads on save, so a half-written file in the editor can
+never light the board up red in the middle of a drive.
 
-**What gets shipped is main.py's imports, constants and classes, not main.py.**
-The banner print, `robot = Guzzchan()` and the match loop are dropped -- any
-top-level assignment that calls something is left out, so constants like
-`TRIM_FORWARD` go and constructed objects do not. X builds a fresh `Guzzchan`
-and calls `auto_mode()` on it, the same code path the real match takes minus
-`power_manage_module.is_auto_mode()`; that fresh one then carries on driving.
+**A file that does not compile never leaves the PC.** Each one is parsed here
+with `ast`, so a typo costs a printed SyntaxError; the board is not touched and
+keeps the code it already has. At startup there is nothing to fall back on, so
+it is an exit instead.
 
-**The classes really are live board-side, not re-sent per call.** The source
-is reassembled into `_S` and `exec`d, which binds the classes -- and the
-`mbuild` imports their methods resolve against -- into the board's live-mode
-globals, and those persist for the whole session. That is live.py's own
-chunked path, the one every `define()` body over 240 bytes takes. `load()`
-proves it rather than trusting it, by naming the class from a *different*
-frame than the one that exec'd it, then frees `_S` and reports the RAM left.
+**main.py is trimmed, the other modules are not.** From main.py only imports,
+constants, classes and functions are sent: the banner print, `robot =
+Guzzchan()` and the match loop are dropped -- any top-level assignment that
+calls something is left out. The other modules are sent whole, the way the
+board would import them, minus the comments between top-level statements.
 
-**The source last sent is remembered** and re-sent only when the file really
-changed, so pressing X twice on the same file starts auto immediately.
+**Board errors come back as text.** Loading a module and running auto both
+reply with the board's exception (`NameError(...)`, `MemoryError()`) instead of
+going silent, so a typo in auto.py prints at once rather than after
+AUTO_TIMEOUT.
 
 **Auto cannot be interrupted from here.** Live mode runs one request at a time,
-so while `auto_mode()` runs board-side the PC is blocked waiting for its reply
+so while auto runs board-side the PC is blocked waiting for its reply
 and any stop you send just queues behind it. The robot's power switch is the
 abort. `AUTO_TIMEOUT` bounds how long this script waits, not how long the board
 runs.
@@ -146,15 +153,18 @@ from kbd import down as kbd_down                      # noqa: E402
 # for a gap and pick up again, which is a stutter, not a runaway.
 DEFAULT_PULSE = 0.08
 IDLE_TICK = 0.05        # poll interval while stopped (nothing is in flight)
-# Stick value a key stands for. main.py drives normal speed past 70 and slow
-# speed between 20 and 70 (Guzzchan.control), so these land one in each band.
+# Stick value a key stands for. Wheel.holomix ignores anything under its
+# deadzone and scales the rest, so 50 is a half-speed drive.
 KEY_FULL = 100
 KEY_SLOW = 50
 
-# main.py sits one level up from scripts/; that is the file shipped to the board.
-MAIN_PY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                       'main.py')
-# The class built board-side; it must have control(), auto_mode() and .wheel.
+# The robot's .py files sit one level up from scripts/. main.py and whatever it
+# imports from there are what get shipped to the board.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MAIN = 'main'
+AUTO = 'auto'           # the one module X re-reads
+# The class built board-side, in main.py; it must have control(), auto() and
+# .wheel.
 ENTRY = 'Guzzchan'
 # How long to wait for auto to say it finished. A MakeX auto period is 30 s;
 # this only bounds the wait, the board keeps running either way.
@@ -163,10 +173,35 @@ AUTO_TIMEOUT = 45.0
 
 # Board-side helpers, one small statement per frame. Live-mode globals persist
 # for the session, so this runs once; stepwise, each frame's reply confirms that
-# part landed. `_R` (the Guzzchan) does not exist yet -- MainPy.build() makes
+# part landed. `_R` (the Guzzchan) does not exist yet -- Robot.build() makes
 # it -- and these only look it up when called.
 def setup_steps(pulse):
     return [
+        # The modules, by name (see the docstring). _ld execs the source in _S
+        # into a fresh dict and replies with what it raised, if anything.
+        "_M = {}\n"
+        "def _ld(n):\n"
+        " g = {'__name__': n, '_M': _M}\n"
+        " try:\n"
+        "  exec(_S, g)\n"
+        " except Exception as e:\n"
+        "  return repr(e)[:200]\n"
+        " _M[n] = g\n"
+        " return 'ok'\n"
+        "online_debug_respond('modules ok')",
+
+        # Auto, replying with the error instead of going silent; the wheels stop
+        # either way.
+        "def _a():\n"
+        " try:\n"
+        "  _R.auto()\n"
+        "  r = 'done'\n"
+        " except Exception as e:\n"
+        "  r = repr(e)[:200]\n"
+        " _s()\n"
+        " online_debug_respond(r)\n"
+        "online_debug_respond('auto ok')",
+
         # Stands in for main.py's `gamepad`: control() reads the PC's sticks out
         # of `j`, and anything else it asks (a button, is_connected) reads 0.
         "import time\n"
@@ -336,113 +371,175 @@ def pressed(prev, name, now):
     return fired
 
 
-# ------------------------------------------------------------- main.py --
+# ------------------------------------------------------------- modules --
 
-def board_program(path):
-    """main.py's top-level imports, constants, classes and functions, as one
-    source string.
+def _lines(node):
+    """First and last source line of a top-level statement, decorators included."""
+    first = min([node.lineno] + [d.lineno for d in
+                                 getattr(node, 'decorator_list', [])])
+    return first, node.end_lineno
 
-    Parsing here is the point: a main.py that does not compile raises
-    SyntaxError on the PC, before a single frame is sent. What is dropped is
-    everything else -- the banner print, the match loop, and any assignment
-    that calls something, like `robot = Guzzchan()` -- because the board builds
-    its own Guzzchan.
+
+def module_source(name):
+    """One module as the board gets it: (source, imports).
+
+    `imports` holds one (module, [(bound name, name in module), ...]) per
+    `from <local module> import ...`, and each of those lines is rewritten into
+    lookups in `_M`. Parsing here is the point: a file that does not compile
+    raises SyntaxError on the PC, before a single frame is sent.
     """
+    path = os.path.join(ROOT, name + '.py')
     with open(path, encoding='utf-8') as fh:
         src = fh.read()
     lines = src.split('\n')
-    kept = [n for n in ast.parse(src, path).body
-            if isinstance(n, (ast.Import, ast.ImportFrom,
-                              ast.ClassDef, ast.FunctionDef))
-            or (isinstance(n, ast.Assign) and not isinstance(n.value, ast.Call))]
-    if not kept:
-        raise IOError('%s has no classes to send' % path)
-    return '\n'.join('\n'.join(lines[n.lineno - 1:n.end_lineno])
-                     for n in kept) + '\n'
+    local = set(f[:-3] for f in os.listdir(ROOT) if f.endswith('.py'))
+    out, imports = [], []
+    for n in ast.parse(src, path).body:
+        if isinstance(n, ast.Import) and any(a.name in local for a in n.names):
+            raise IOError('%s.py line %d: import a module of this folder as '
+                          '`from x import y`; plain `import x` is not supported'
+                          % (name, n.lineno))
+        if isinstance(n, ast.ImportFrom) and not n.level and n.module in local:
+            pairs = [(a.asname or a.name, a.name) for a in n.names]
+            if ('*', '*') in pairs:
+                raise IOError('%s.py line %d: `from %s import *` is not supported'
+                              % (name, n.lineno, n.module))
+            imports.append((n.module, pairs))
+            out.append('; '.join('%s = _M[%r][%r]' % (a, n.module, b)
+                                 for a, b in pairs))
+            continue
+        # main.py runs the match when imported, so only its definitions go:
+        # no banner print, no `robot = Guzzchan()`, no match loop.
+        if name == MAIN and not (
+                isinstance(n, (ast.Import, ast.ImportFrom,
+                               ast.ClassDef, ast.FunctionDef))
+                or (isinstance(n, ast.Assign) and not isinstance(n.value, ast.Call))):
+            continue
+        first, last = _lines(n)
+        out.append('\n'.join(lines[first - 1:last]))
+    return '\n'.join(out) + '\n', imports
 
 
-class MainPy(object):
-    """main.py's classes on the board: loads them, builds `_R`, runs auto.
+def load_order():
+    """[(name, source, imports)] for main.py and every local module it pulls
+    in, each one after the modules it imports from. Every file is parsed
+    before this returns, so nothing is sent unless all of them compile."""
+    order, done = [], set()
+
+    def visit(name, chain):
+        if name in chain:
+            raise IOError('circular import %s -- the board cannot load that '
+                          'either. A module must not import main.py.'
+                          % ' -> '.join(chain[chain.index(name):] + [name]))
+        if name in done:
+            return
+        src, imports = module_source(name)
+        for mod, _ in imports:
+            visit(mod, chain + [name])
+        done.add(name)
+        order.append((name, src, imports))
+
+    visit(MAIN, [])
+    return order
+
+
+class Robot(object):
+    """main.py and its modules on the board: loads them, builds `_R`, runs auto.
 
     Reading is tied to startup and the auto button and nothing else: no
     watcher, no upload on save. Between presses the board holds whatever was
     last sent, so a broken editor buffer is invisible to it.
     """
 
-    def __init__(self, lv, path):
+    def __init__(self, lv):
         self.lv = lv
-        self.path = path
-        self.sent = None        # the source the board currently holds
+        self.sent = {}          # module -> the source the board holds
+        self.auto_names = []    # (importer, bound name, name in auto.py)
 
-    def load(self, src):
-        """Ship the classes if they changed. True if the board was re-loaded."""
-        if src == self.sent:
+    def load(self, name, src):
+        """Ship one module if it changed. True if the board re-loaded it."""
+        if self.sent.get(name) == src:
             return False
-        self.sent = None        # a load that fails halfway must not look cached
-        free = self.lv.run('import gc\ngc.collect()\n'
-                           'online_debug_respond(gc.mem_free())')
-        print('  sending %d bytes of main.py (%s bytes free board-side)'
-              % (len(src.encode('utf-8')), free or '?'))
+        self.sent[name] = None  # a load that fails halfway must not look cached
         self.lv.send_source(src)        # raises IOError if a fragment is lost
-        # exec(_S) is live.py's own chunked path -- the one define() takes for
-        # any board_code over 240 bytes. Names it binds land in the board-side
-        # globals, and those persist for the session; that is what lets the
-        # NEXT frame call Guzzchan(), and what lets each method resolve
-        # `encoder_motor_class`, `gamepad` and TRIM_FORWARD when it runs. No
-        # reply means the source raised on the way in.
-        if self.lv.run("exec(_S)\nonline_debug_respond('loaded')",
-                       timeout=20) is None:
-            raise IOError('the board did not accept main.py. It parses here, so '
-                          'look at the USB console: an import raised, or the '
-                          'board ran out of memory part-way through.')
-        # A separate frame on purpose. Naming the class here, from a frame that
-        # is not the one that exec'd it, is the proof that the assumption above
-        # held: a bare NameError gets no reply and is reported as exactly that.
-        # It also drops the source and says how much RAM is left.
-        free = self.lv.run("_S = ''\nimport gc\ngc.collect()\n%s\n"
-                           "online_debug_respond(gc.mem_free())" % ENTRY)
-        if free is None:
-            raise IOError('%s did not survive into the board globals: the source '
-                          'exec\'d, but the next frame cannot see the class. '
-                          'Nothing was run.' % ENTRY)
-        print('  loaded, %s bytes free' % free)
-        self.sent = src
+        got = self.lv.run('online_debug_respond(_ld(%r))' % name, timeout=20)
+        if (got or '').strip() != 'ok':
+            raise IOError('the board did not accept %s.py: %s'
+                          % (name, got or 'no reply, check the USB console'))
+        self.sent[name] = src
         return True
 
     def build(self):
-        """A fresh Guzzchan as `_R`, with its gamepad swapped for the PC's.
+        """A fresh Guzzchan as `_R`, with every module's gamepad swapped for
+        the PC's.
 
-        The swap is redone every time because exec(_S) re-runs main.py's
-        `from mbuild import gamepad`, which puts the real one back. A reply
-        means __init__ walked every class and module name it needs.
+        The swap is redone every time because a re-loaded auto.py brings its
+        own `from mbuild import gamepad` back. A reply means __init__ walked
+        every class and module name it needs.
         """
-        if self.lv.run("_R = %s()\ngamepad = _P\nonline_debug_respond('ready')"
-                       % ENTRY, timeout=15) is None:
-            raise IOError('%s() would not construct. The classes are loaded, so '
+        if self.lv.run("_R = _M[%r][%r]()\n"
+                       "for _g in _M.values():\n"
+                       " if 'gamepad' in _g:\n"
+                       "  _g['gamepad'] = _P\n"
+                       "online_debug_respond('ready')" % (MAIN, ENTRY),
+                       timeout=15) is None:
+            raise IOError('%s() would not construct. The modules are loaded, so '
                           'this is __init__ itself -- a motor or servo not '
-                          'answering (M1-M4), or a name a class body uses. '
+                          'answering, or a name a class body uses. '
                           'Check the USB console.' % ENTRY)
 
     def start(self):
-        """Read, load and build: what both scripts do before the first drive."""
-        self.load(board_program(self.path))
+        """Load main.py and its modules, then build: before the first drive."""
+        order = load_order()
+        free = self.lv.run('import gc\ngc.collect()\n'
+                           'online_debug_respond(gc.mem_free())')
+        print('  sending %d bytes in %d files (%s bytes free board-side)'
+              % (sum(len(s.encode('utf-8')) for _, s, _ in order), len(order),
+                 free or '?'))
+        for name, src, imports in order:
+            self.load(name, src)
+            for mod, pairs in imports:
+                if mod == AUTO:
+                    self.auto_names += [(name, a, b) for a, b in pairs]
+            print('  %s.py' % name)
+        # Drops the last source and says how much RAM is left. Naming the class
+        # is the check that main.py defined it: no reply means it did not.
+        free = self.lv.run("_S = ''\nimport gc\ngc.collect()\n_M[%r][%r]\n"
+                           "online_debug_respond(gc.mem_free())" % (MAIN, ENTRY))
+        if free is None:
+            raise IOError('main.py loaded but has no %s class. Nothing was run.'
+                          % ENTRY)
+        print('  loaded, %s bytes free' % free)
         self.build()
 
     def auto(self):
-        """Read, then stop the wheels, then refresh the code, then auto_mode().
+        """Read auto.py, then stop the wheels, then refresh it, then auto().
 
-        The read comes first on purpose: a main.py that does not parse costs
+        The read comes first on purpose: an auto.py that does not parse costs
         nothing at all -- not a frame, not even the stop -- so pressing X on a
         broken file leaves the drive exactly as it was.
         """
-        src = board_program(self.path)
+        if AUTO not in self.sent:
+            raise IOError('main.py does not import %s.py, so X has nothing to '
+                          're-read' % AUTO)
+        src, imports = module_source(AUTO)
+        missing = [m for m, _ in imports if m not in self.sent]
+        if missing:
+            raise IOError('%s.py now imports %s, which was not loaded at '
+                          'startup. Restart Teleop.' % (AUTO, ', '.join(missing)))
         self.lv.run('_s()', reply=False)
-        self.load(src)
+        if self.load(AUTO, src):
+            # main.py's `from auto import auto_mode` still holds the old
+            # function; point it at the new one, and drop the source.
+            if self.lv.run(''.join('_M[%r][%r] = _M[%r][%r]\n' % (m, a, AUTO, b)
+                                   for m, a, b in self.auto_names)
+                           + "_S = ''\nonline_debug_respond(1)") is None:
+                raise IOError('%s.py loaded, but the names imported from it '
+                              'could not be updated. Nothing was run.' % AUTO)
         self.build()
         # retries=0 is not a detail: a retry here would run the whole auto a
         # second time. A lost reply means "no idea how it went", never "again".
-        return self.lv.run("_R.auto_mode()\n_s()\nonline_debug_respond('done')",
-                           timeout=AUTO_TIMEOUT, retries=0)
+        return self.lv.run('_a()', timeout=AUTO_TIMEOUT, retries=0)
 
 
 def connect(port, pulse):
@@ -450,35 +547,39 @@ def connect(port, pulse):
     the reason (board back in run mode) if any of it does not land."""
     lv = Live(port)
     lv.mode(MODE_LIVE)                  # stops /main.py
-    mp = MainPy(lv, MAIN_PY)
+    robot = Robot(lv)
     try:
         for step in setup_steps(pulse):
             if lv.run(step, timeout=6) is None:
                 raise IOError('The board did not accept this setup step:\n\n%s'
                               % step)
-        print('loading %s' % MAIN_PY)
-        mp.start()
+        print('loading main.py and its modules from %s' % ROOT)
+        robot.start()
     except (SyntaxError, IOError, OSError) as exc:
         lv.mode(MODE_RUN)
         lv.close()
         sys.exit(str(exc))
-    return lv, mp
+    return lv, robot
 
 
-def start_auto(mp):
-    """One press of the auto button. Never lets a bad main.py reach the board."""
-    print('\nauto: reading %s' % mp.path)
+def start_auto(robot):
+    """One press of the auto button. Never lets a bad auto.py reach the board."""
+    print('\nauto: reading %s.py' % AUTO)
     t0 = time.time()
     try:
-        done = mp.auto()
+        done = robot.auto()
     except SyntaxError as exc:
-        print('  main.py does not compile, nothing was sent:\n    %s' % exc)
+        print('  %s.py does not compile, nothing was sent:\n    %s' % (AUTO, exc))
     except (IOError, OSError) as exc:
         print('  %s' % exc)
     else:
-        print('  auto %s after %.1f s'
-              % ('finished' if done else 'gave no reply (still running?)',
-                 time.time() - t0))
+        if done is None:
+            what = 'gave no reply (still running?)'
+        elif done.strip() == 'done':
+            what = 'finished'
+        else:
+            what = 'raised %s' % done.strip()
+        print('  auto %s after %.1f s' % (what, time.time() - t0))
     print('back on the sticks.')
 
 
@@ -509,7 +610,7 @@ def main():
         idx = xinput_find()
         pad = Controller(idx) if idx is not None else None
 
-    lv, mp = connect(sys.argv[1], pulse)
+    lv, robot = connect(sys.argv[1], pulse)
     # The key table is only written once, in the docstring; this prints that
     # same block, cut between the usage lines above it and the note below it.
     print(__doc__.split('--keyboard\n', 1)[1]
@@ -535,7 +636,7 @@ def main():
             if quit_ or (pad and down('ESC')):
                 break
             if pressed(prev, 'auto', run_auto):
-                start_auto(mp)
+                start_auto(robot)
                 last = None     # board is stopped; resend whatever comes next
                 continue
             v = (0, 0, 0) if stop else (lx, ly, rx)
