@@ -5,14 +5,14 @@ def auto_mode(robot, side="L"):
     if side == "R":
         if (robot.conveyor.ball_hand.get_value("angle") > 10):
             robot.conveyor.toggle_ball_hand()
-        # robot.conveyor.lift_cone()
+        robot.conveyor.lift_cone()
         time.sleep(0.65)
         robot.conveyor.lift_hand_servo.move_to(-130, 50)
         time.sleep(0.4)
         robot.wheel.move_backward()
         time.sleep(0.4)
         robot.wheel.rotate_slow_right()
-        time.sleep(0.26)
+        time.sleep(0.15)
         power_expand_board.set_power(robot.conveyor.sixseven, -60)
         time.sleep(0.1)
         robot.wheel.move_slow_forward()

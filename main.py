@@ -61,6 +61,9 @@ class Guzzchan:
             
         if self._pressed("Down"):
             self.current_mode = not self.current_mode
+            
+        if self._pressed("N4"):
+            self.conveyor.toggle_river_feeder()
 
 
         if gamepad.is_key_pressed("L2") or gamepad.is_key_pressed("R2"):
@@ -104,12 +107,16 @@ class Guzzchan:
             self.conveyor.stop_hand()
             
     def auto(self):
-        auto_mode(self, "L") # "L" or "R"
+        #auto_mode(self, "R") # "L" or "R"
+        pass
+        
 
 
 robot = Guzzchan()
             
 while True:
+    print(robot.conveyor.lift_hand_servo.get_value("angle"))
+    print(robot.conveyor.ball_hand.get_value("angle"))
     if power_manage_module.is_auto_mode():
         robot.auto()
         while power_manage_module.is_auto_mode():

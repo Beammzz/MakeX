@@ -9,18 +9,23 @@ the first argument. The optional second argument is the shake sensitivity
 
 One line is redrawn in place, e.g.
 
-    yaw   12.3 pit   -1.2 rol    0.4 | rate    0.1   -0.3   45.2 d/s | accel   0.01  -0.02   1.00 g  |a| 1.00 | 31.5C | -     | drift   +1.4 d/min
+    yaw   12.3 pit   -1.2 rol    0.4 | rate    0.1   -0.3   45.2 d/s | accel   0.10  -0.20   9.81 m/s2  |a| 9.81 | -     | drift   +1.4 d/min
 
     yaw/pit/rol   get_yaw / get_pitch / get_roll, in degrees.
     rate          get_gyroscope('x'/'y'/'z'), angular velocity in deg/s.
-    accel         get_acceleration('x'/'y'/'z'), in g. |a| is the magnitude:
-                  it should read ~1.00 while the robot sits still, whatever
+    accel         get_acceleration('x'/'y'/'z'), in m/s2 (firmware 41.02.039
+                  reads ~9.8, not 1 g as the stub says). |a| is the magnitude:
+                  it should read ~9.8 while the robot sits still, whatever
                   angle it sits at, so it is the quickest sanity check the
                   accelerometer has.
-    C             get_temperature(), the IMU die -- not the room.
     shake         is_shaked(); shown as SHAKE and held lit for HOLD seconds,
                   because the event can otherwise land between two polls.
     drift         how fast yaw has walked since the last reset, in deg/min.
+    NO REPLY      the last read() got no answer; the numbers are stale.
+
+get_temperature() is left out: on 41.02.039 it wants an argument and raises
+without one, and since every reading travels in one command, that one error
+blanked the whole display.
 
 Yaw is integrated from the Z gyro alone -- the board is a 6-axis IMU with no
 compass -- so it drifts, and the official docs say not to trust it as a true
@@ -92,18 +97,18 @@ def board_code():
         online_debug_respond(1)
 
     def read():
-        """Every reading in one command: 11 comma-separated fields.
+        """Every reading in one command: 10 comma-separated fields.
 
-        One command rather than eleven because each one is a radio round trip,
+        One command rather than ten because each one is a radio round trip,
         and readings from different trips are not the same instant."""
         online_debug_respond(
-            '%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.1f,%d' % (
+            '%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%d' % (
                 novapi.get_yaw(), novapi.get_pitch(), novapi.get_roll(),
                 novapi.get_gyroscope('x'), novapi.get_gyroscope('y'),
                 novapi.get_gyroscope('z'),
                 novapi.get_acceleration('x'), novapi.get_acceleration('y'),
                 novapi.get_acceleration('z'),
-                novapi.get_temperature(), 1 if novapi.is_shaked() else 0))
+                1 if novapi.is_shaked() else 0))
 
     def reset(axis):
         novapi.reset_rotation(axis)
@@ -113,12 +118,12 @@ def board_code():
 # ------------------------------------------------------------------- PC side --
 
 def reading_of(reply, previous):
-    """Pull the 11 fields out of a board reply. Keeps `previous` when the reply
+    """Pull the 10 fields out of a board reply. Keeps `previous` when the reply
     is missing or malformed, so one lost frame does not blank the display."""
     if not reply:
         return previous
     fields = reply.split(',')
-    if len(fields) != 11:
+    if len(fields) != 10:
         return previous
     try:
         return [float(v) for v in fields]
@@ -126,14 +131,15 @@ def reading_of(reply, previous):
         return previous
 
 
-def line(r, shaking, drift):
+def line(r, shaking, drift, answered):
     yaw, pitch, roll, wx, wy, wz, ax, ay, az = r[:9]
     mag = (ax * ax + ay * ay + az * az) ** 0.5
     return ('yaw %6.1f pit %6.1f rol %6.1f | rate %6.1f %6.1f %6.1f d/s | '
-            'accel %6.2f %6.2f %6.2f g  |a| %4.2f | %4.1fC | %-5s | drift %s'
-            % (yaw, pitch, roll, wx, wy, wz, ax, ay, az, mag, r[9],
+            'accel %6.2f %6.2f %6.2f m/s2  |a| %5.2f | %-5s | drift %s | %-8s'
+            % (yaw, pitch, roll, wx, wy, wz, ax, ay, az, mag,
                'SHAKE' if shaking else '-',
-               '   ---     ' if drift is None else '%+6.1f d/min' % drift))
+               '   ---     ' if drift is None else '%+6.1f d/min' % drift,
+               '' if answered else 'NO REPLY'))
 
 
 def main():
@@ -160,7 +166,7 @@ def main():
           % (sys.argv[1], threshold))
     print('R resets all angles, Z resets yaw only, ESC or Ctrl-C quits')
 
-    reading = [0.0] * 11
+    reading = [0.0] * 10
     shaken_at = 0.0
     zeroed_at = time.time()
     held = set()
@@ -178,15 +184,17 @@ def main():
                 board.run('reset(%r)' % ('all' if key == 'R' else 'z'))
                 zeroed_at = time.time()
 
-            reading = reading_of(board.run('read()', timeout=1.5, retries=0), reading)
+            reply = board.run('read()', timeout=1.5, retries=0)
+            reading = reading_of(reply, reading)
             now = time.time()
-            if reading[10]:
+            if reading[9]:
                 shaken_at = now
             # Drift is yaw over time since the reset put it at zero. Under a few
             # seconds of baseline the number swings wildly, so it stays blank.
             elapsed = now - zeroed_at
             drift = reading[0] / elapsed * 60.0 if elapsed > 5.0 else None
-            sys.stdout.write('\r' + line(reading, now - shaken_at < HOLD, drift) + '  ')
+            sys.stdout.write('\r' + line(reading, now - shaken_at < HOLD, drift,
+                                         reply is not None) + '  ')
             sys.stdout.flush()
             time.sleep(POLL)
     except KeyboardInterrupt:

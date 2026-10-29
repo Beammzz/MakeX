@@ -1,5 +1,6 @@
 from mbuild import power_expand_board
 from mbuild.smartservo import smartservo_class
+import time
 
 # เซอร์โว
 SERVO = "M6"
@@ -41,6 +42,7 @@ class Conveyor:
         self.ball_conveyor_toggle = False
         self.toggle_ball = False
         self.toggle_block = False
+        self.toggle_updown = False
 
         # Block convey
         self.block_a = DC_BLOCK_A
@@ -58,6 +60,7 @@ class Conveyor:
                 self.ball_hand.move_to(0, SERVO_SPEED)
                 self.toggle_ball = False
     
+            
     def toggle_ball_conveyor(self):
         if not self.ball_conveyor_toggle:
             power_expand_board.set_power(self.ball_feeder, -100)
@@ -83,7 +86,8 @@ class Conveyor:
     def shooter_convey_stop(self):
         power_expand_board.set_power(self.ball_shooter, 0)
         power_expand_board.set_power(self.ball_conveyor, 0)
-        power_expand_board.set_power(self.sixseven, 0)
+        # ถ้าเปิด river feeder อยู่ ให้ sixseven หมุนต่อ
+        power_expand_board.set_power(self.sixseven, -60 if self.toggle_updown else 0)
 
     def block_convey(self, reverse=False):
             if reverse:
@@ -113,6 +117,7 @@ class Conveyor:
             power_expand_board.set_power(self.hand, -80)
                     
     def stop_hand(self):
+        # ถ้าเปิด river feeder อยู่ ให้ hand หมุนต่อ
         power_expand_board.set_power(self.hand, 0)
                 
     def toggle_block_hand(self):
@@ -131,3 +136,20 @@ class Conveyor:
             
     def stop_lift_hand(self):
         self.lift_hand_servo.set_power(0)
+        
+    def toggle_river_feeder(self):
+        if not self.toggle_updown:
+            self.lift_hand_servo.move_to(289, SERVO_SPEED)
+            self.lift_cone()
+            time.sleep(1.2)
+            self.ball_hand.move_to(105, SERVO_SPEED)
+            power_expand_board.set_power(self.sixseven, -60)
+            power_expand_board.set_power(self.ball_feeder, -80)
+            self.toggle_updown = True
+        else:
+            self.lift_hand_servo.move_to(200, SERVO_SPEED)
+            power_expand_board.set_power(self.sixseven, 0)
+            power_expand_board.set_power(self.ball_feeder, 0)
+            time.sleep(1.5)
+            self.ball_hand.move_to(0, SERVO_SPEED)
+            self.toggle_updown = False
