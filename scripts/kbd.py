@@ -1,7 +1,11 @@
 """Held-key state for the PC-side scripts: down('W') is True while W is held.
 
-Windows: GetAsyncKeyState, true key state, works even when another window has
-focus.
+Windows: GetAsyncKeyState, true key state -- but that is the whole machine's
+keyboard, and in VS Code the editor and the terminal are one window, so no
+focus check can tell them apart. A held key therefore only counts once a key
+press has actually arrived in this console: VS Code sends keys to the terminal
+only while the terminal panel has focus, so typing W in the editor, a browser
+or anywhere else never reaches the script. A key stays claimed until released.
 
 Linux/macOS: a terminal only delivers key-down events (no key-up), so a key
 counts as held while its auto-repeat keeps arriving. The first press is held
@@ -28,13 +32,28 @@ _ARROWS = {'A': 'UP', 'B': 'DOWN', 'C': 'RIGHT', 'D': 'LEFT'}
 
 if sys.platform == 'win32':
     import ctypes
+    import msvcrt
     _user32 = ctypes.windll.user32
+    _mine = set()           # held keys whose press reached this console
 
     def available():
         return True
 
-    def down(key):
+    def _held(key):
         return bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
+
+    def down(key):
+        for k in list(_mine):
+            if not _held(k):
+                _mine.discard(k)
+        # Any input in this console claims every key held right now. Which
+        # character came in does not matter, so this works on any layout
+        # (Thai too), and SHIFT is claimed by the letter typed with it.
+        if msvcrt.kbhit():
+            while msvcrt.kbhit():
+                msvcrt.getwch()
+            _mine.update(k for k in VK if _held(k))
+        return key in _mine
 
 else:
     import atexit

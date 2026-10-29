@@ -71,11 +71,11 @@ exit, so this script owns the board. Commands run one at a time, in order, and a
 snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
-Keys come from `kbd.py`: on Windows the key-state API (true held state, works
-even when another window has focus -- stop the motors before going off to
-type); on Linux the terminal's key repeat, so only the terminal running this
-script gets keys, and a key reads as held while it keeps repeating (a tap
-counts as held for about half a second).
+Keys come from `kbd.py`: on Windows the key-state API (true held state, but a
+key only counts once its press has reached this terminal, so typing in the
+editor never moves anything); on Linux the terminal's key repeat, so only the
+terminal running this script gets keys, and a key reads as held while it
+keeps repeating (a tap counts as held for about half a second).
 
 `live` and `pc_gamepad` live in the extension's `scripts/` folder, not next to
 this file; `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS`

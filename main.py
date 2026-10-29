@@ -31,6 +31,7 @@ class Guzzchan:
         self.conveyor = Conveyor()
         self.shooter = Shooter()
         self._prev_keys = {}
+        self.current_mode = False
 
     def _pressed(self, key):
             now = gamepad.is_key_pressed(key)
@@ -54,15 +55,21 @@ class Guzzchan:
             
         if self._pressed("Up"):
             self.conveyor.toggle_ball_hand()
+            
+        if self._pressed("≡"):
+            self.conveyor.toggle_block_hand()
+            
+        if self._pressed("Down"):
+            self.current_mode = not self.current_mode
 
 
         if gamepad.is_key_pressed("L2") or gamepad.is_key_pressed("R2"):
             if self.conveyor.ball_conveyor_toggle:
                 self.conveyor.toggle_ball_conveyor()
         if gamepad.is_key_pressed("L2"):
-            self.conveyor.shooter_convey()
-        elif gamepad.is_key_pressed("R2"):
             self.conveyor.shooter_convey(reverse=True)
+        elif gamepad.is_key_pressed("R2"):
+            self.conveyor.shooter_convey()
         elif not self.conveyor.ball_conveyor_toggle:
             self.conveyor.shooter_convey_stop()
             
@@ -74,12 +81,19 @@ class Guzzchan:
         else:
             self.conveyor.block_convey_stop()
         
-        if gamepad.is_key_pressed("N2"):
+        if gamepad.is_key_pressed("N2") and not self.current_mode:
             self.conveyor.lift_cone()
-        elif gamepad.is_key_pressed("N3"):
+        elif gamepad.is_key_pressed("N3") and not self.current_mode:
             self.conveyor.lift_cone(reverse=True)
         else:
             self.conveyor.stop_lift()
+            
+        if gamepad.is_key_pressed("N2") and self.current_mode:
+            self.conveyor.lift_hand(reverse=True)
+        elif gamepad.is_key_pressed("N3") and self.current_mode:
+            self.conveyor.lift_hand()
+        else:   
+            self.conveyor.stop_lift_hand()
             
         if gamepad.is_key_pressed("Left"):
             self.conveyor.hand_hold()

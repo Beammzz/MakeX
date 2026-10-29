@@ -17,9 +17,12 @@ DC_CONE_LIFT = "DC1"
 DC_HAND = "DC7"
 
 BALL_HAND_INDEX = "INDEX1"
-LIFT_HAND_INDEX = "INDEX2"
-BLOCK_HAND_INDEX = "INDEX3"
 BALL_HAND_OPEN_DEGREE = 112
+
+LIFT_HAND_INDEX = "INDEX2"
+
+BLOCK_HAND_INDEX = "INDEX3"
+BLOCK_HAND_OPEN_DEGREE = -46
 
 class Conveyor:
     def __init__(self) -> None:
@@ -28,11 +31,16 @@ class Conveyor:
         self.ball_conveyor = DC_BALL_CONVEYOR
         self.ball_feeder = DC_BALL_FEEDER
         self.sixseven = DC_SIXSEVEN
-        self.lift_hand = smartservo_class(SERVO, LIFT_HAND_INDEX)
+        
+        # Servo
+        self.lift_hand_servo = smartservo_class(SERVO, LIFT_HAND_INDEX)
         self.block_hand = smartservo_class(SERVO, BLOCK_HAND_INDEX)
         self.ball_hand = smartservo_class(SERVO, BALL_HAND_INDEX)
+        
+        #State
         self.ball_conveyor_toggle = False
         self.toggle_ball = False
+        self.toggle_block = False
 
         # Block convey
         self.block_a = DC_BLOCK_A
@@ -54,21 +62,23 @@ class Conveyor:
         if not self.ball_conveyor_toggle:
             power_expand_board.set_power(self.ball_feeder, -100)
             power_expand_board.set_power(self.ball_conveyor, 100)
+            power_expand_board.set_power(self.sixseven, -30)
             self.ball_conveyor_toggle = True
         else:
             power_expand_board.set_power(self.ball_feeder, 0)
             power_expand_board.set_power(self.ball_conveyor, 0)
+            power_expand_board.set_power(self.sixseven, 0)
             self.ball_conveyor_toggle = False
             
     def shooter_convey(self, reverse=False):
         if reverse:
             power_expand_board.set_power(self.ball_shooter, -100)
             power_expand_board.set_power(self.ball_conveyor, -100)
-            power_expand_board.set_power(self.sixseven, 60)
+            power_expand_board.set_power(self.sixseven, 30)
         else:
             power_expand_board.set_power(self.ball_shooter, 100)
             power_expand_board.set_power(self.ball_conveyor, 100)
-            power_expand_board.set_power(self.sixseven, 60)
+            power_expand_board.set_power(self.sixseven, 30)
             
     def shooter_convey_stop(self):
         power_expand_board.set_power(self.ball_shooter, 0)
@@ -105,4 +115,19 @@ class Conveyor:
     def stop_hand(self):
         power_expand_board.set_power(self.hand, 0)
                 
+    def toggle_block_hand(self):
+        if not self.toggle_block:
+            self.block_hand.move_to(BLOCK_HAND_OPEN_DEGREE, SERVO_SPEED)
+            self.toggle_block = True
+        else:
+            self.block_hand.move_to(0, SERVO_SPEED)
+            self.toggle_block = False
     
+    def lift_hand(self, reverse=False):
+        if reverse:
+            self.lift_hand_servo.set_power(-40)
+        else:
+            self.lift_hand_servo.set_power(40)
+            
+    def stop_lift_hand(self):
+        self.lift_hand_servo.set_power(0)

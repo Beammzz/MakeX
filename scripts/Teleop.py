@@ -20,10 +20,11 @@ text.
     Xbox: left stick drives/strafes, right stick X rotates, B stop,
           BACK or ESC quit, X runs auto.
 
-Keys count only while the terminal running this script has focus, so typing W in
-the editor or a browser cannot drive the robot; click back into the terminal to
-take the sticks. Losing focus reads as all-keys-up, which the deadman turns into
-a stop. A gamepad is read whatever has focus -- it is not the machine's keyboard.
+Keys count only when they reach the terminal running this script (see kbd.py),
+so typing W in the editor or a browser cannot drive the robot; click back into
+the terminal to take the sticks. A key held while you click into the editor
+keeps driving until you let go of it; switching to another app stops it at
+once. A gamepad is read whatever has focus -- it is not the machine's keyboard.
 
 
 MAIN.PY ON THE BOARD
@@ -235,12 +236,6 @@ def setup_steps(pulse):
     ]
 
 
-# Virtual-key codes for GetAsyncKeyState. msvcrt only reports keypress events,
-# with the OS auto-repeat delay in the way; this reports true held-key state,
-# which is what makes holding W feel like holding W.
-VK = {'W': 0x57, 'A': 0x41, 'S': 0x53, 'D': 0x44, 'Q': 0x51, 'E': 0x45,
-      'X': 0x58, 'SHIFT': 0x10, 'SPACE': 0x20, 'ESC': 0x1B}
-
 _user32 = ctypes.windll.user32 if sys.platform == 'win32' else None
 _kernel32 = ctypes.windll.kernel32 if sys.platform == 'win32' else None
 if _user32 is not None:
@@ -309,13 +304,15 @@ _OWN_PIDS = _own_pids() if _user32 is not None else set()
 
 
 def focused():
-    """True while the terminal running this script owns the keyboard.
+    """True while the window hosting this script is in front.
 
-    GetAsyncKeyState reports the state of the machine's keyboard, not of a
-    window, so without this W typed anywhere -- the editor, a browser -- drives
-    the robot. The foreground window is either our own console (a plain conhost
-    window, which a ConPTY host such as VS Code does not have) or a window of a
-    process hosting us, hence the two checks.
+    Only half the job: in VS Code the editor is the same window as the
+    terminal, which is why kbd.py also checks that a key press reached this
+    console. This part stops a key that was held when you switched to another
+    app, and drives the "lost focus" notice. The foreground window is either
+    our own console (a plain conhost window, which a ConPTY host such as VS
+    Code does not have) or a window of a process hosting us, hence the two
+    checks.
     """
     if _user32 is None:
         return True                     # a terminal only gets keys when focused
@@ -330,10 +327,8 @@ def focused():
 
 
 def down(key):
-    """Held-key state, but only while our terminal is in front."""
-    if _user32 is None:
-        return kbd_down(key)            # terminal key repeat, see kbd.py
-    return focused() and bool(_user32.GetAsyncKeyState(VK[key]) & 0x8000)
+    """Held-key state (see kbd.py), but only while our window is in front."""
+    return focused() and kbd_down(key)
 
 
 def keyboard_axes():

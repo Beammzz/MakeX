@@ -49,11 +49,11 @@ exit, so this script owns the board. Commands run one at a time, in order, and a
 snippet that raises returns nothing -- check the USB console if a command
 silently does nothing.
 
-Keys come from `kbd.py`: on Windows the key-state API (true held state, works
-even when another window has focus -- stop the motors before going off to
-type); on Linux the terminal's key repeat, so only the terminal running this
-script gets keys, and a key reads as held while it keeps repeating (a tap
-counts as held for about half a second).
+Keys come from `kbd.py`: on Windows the key-state API (true held state, but a
+key only counts once its press has reached this terminal, so typing in the
+editor never moves anything); on Linux the terminal's key repeat, so only the
+terminal running this script gets keys, and a key reads as held while it
+keeps repeating (a tap counts as held for about half a second).
 
 `live` lives in the extension's `scripts/` folder, not next to this file;
 `_bootstrap()` puts that folder on `sys.path`. Set `NOVAPI_SCRIPTS` if the
@@ -147,7 +147,7 @@ def board_code():
 
     # M1 upper-left, M2 lower-left, M3 upper-right, M4 lower-right.
     motors = [encoder_motor_class('M1', 'INDEX1'), encoder_motor_class('M2', 'INDEX1'),
-              encoder_motor_class('M3', 'INDEX1'), encoder_motor_class('M4', 'INDEX1')]
+              encoder_motor_class('M5', 'INDEX1'), encoder_motor_class('M4', 'INDEX1')]
 
     # Subtracted from the raw angles. The encoder motor has no set_zero(), so
     # "zero it here" is arithmetic on this side, not a command to the motor.

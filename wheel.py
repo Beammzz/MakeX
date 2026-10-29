@@ -9,8 +9,9 @@ REVERSE = [1, 1, 1, -1]
 
 # ใช้ใน Auto
 SLOW_SPEED = 40
-
 NORMAL_SPEED = 75
+
+MAX_SPEED = 100
 TRIM_FORWARD = [1, 1, 1, 1]
 TRIM_BACKWARD = [1, 1, 1, 1]
 TRIM_LEFT = [1, 1, 1, 1]
@@ -28,18 +29,17 @@ class Wheel:
         
         self.slow_speed = SLOW_SPEED
         self.normal_speed = NORMAL_SPEED
+        self.max_speed = MAX_SPEED
         self.slide = [-1, 1, 1, -1]
         self.rotate = [1, 1, -1, -1]
-        self.deadzone = 40
+        self.deadzone = 10
 
     def _dz(self, value):
         if abs(value) < self.deadzone:
             return 0
         return value
 
-    def holomix(self, lx, ly, rx, speed=None):
-        if speed is None:
-            speed = self.normal_speed
+    def holomix(self, lx, ly, rx):
         lx = self._dz(lx)
         ly = self._dz(ly)
         rx = self._dz(rx)
@@ -54,45 +54,45 @@ class Wheel:
             powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i])
 
         peak = max(abs(p) for p in powers)
-        scale = speed / max(peak, 100)
+        scale = min(1, self.max_speed / peak)
         for i in range(4):
             self.motors[i].set_power(int(powers[i] * scale) * REVERSE[i])
 
     def move_forward(self):
-        self.holomix(0, 100, 0)
+        self.holomix(0, self.normal_speed, 0)
 
     def move_backward(self):
-        self.holomix(0, -100, 0)
+        self.holomix(0, -self.normal_speed, 0)
 
     def move_left(self):
-        self.holomix(-100, 0, 0)
+        self.holomix(-self.normal_speed, 0, 0)
 
     def move_right(self):
-        self.holomix(100, 0, 0)
+        self.holomix(self.normal_speed, 0, 0)
 
     def move_slow_forward(self):
-        self.holomix(0, 100, 0, self.slow_speed)
+        self.holomix(0, self.slow_speed, 0)
 
     def move_slow_backward(self):
-        self.holomix(0, -100, 0, self.slow_speed)
+        self.holomix(0, -self.slow_speed, 0)
 
     def move_slow_left(self):
-        self.holomix(-100, 0, 0, self.slow_speed)
+        self.holomix(-self.slow_speed, 0, 0)
 
     def move_slow_right(self):
-        self.holomix(100, 0, 0, self.slow_speed)
+        self.holomix(self.slow_speed, 0, 0)
 
     def rotate_left(self):
-        self.holomix(0, 0, -100)
+        self.holomix(0, 0, -self.normal_speed)
 
     def rotate_right(self):
-        self.holomix(0, 0, 100)
+        self.holomix(0, 0, self.normal_speed)
 
     def rotate_slow_left(self):
-        self.holomix(0, 0, -100, self.slow_speed)
+        self.holomix(0, 0, -self.slow_speed)
 
     def rotate_slow_right(self):
-        self.holomix(0, 0, 100, self.slow_speed)
+        self.holomix(0, 0, self.slow_speed)
 
     def stop(self):
         for i in range(4):
