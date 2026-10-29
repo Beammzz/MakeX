@@ -2,7 +2,6 @@ from mbuild import power_expand_board
 from mbuild.smartservo import smartservo_class
 import time
 
-# เซอร์โว
 SERVO = "M6"
 SERVO_SPEED = 30
 
@@ -43,6 +42,8 @@ class Conveyor:
         self.toggle_ball = False
         self.toggle_block = False
         self.toggle_updown = False
+        self.lift_hand_manual = False
+        self.sweep_cone_toggle = False
 
         # Block convey
         self.block_a = DC_BLOCK_A
@@ -52,12 +53,20 @@ class Conveyor:
         self.hand = DC_HAND
 
 
+    def move_to(self, servo, position, speed=SERVO_SPEED, timeout=3):
+        servo.move_to(position, speed)
+        end = time.ticks_add(time.ticks_ms(), int(timeout * 1000))
+        while abs(servo.get_value("angle") - position) > 5:
+            if time.ticks_diff(end, time.ticks_ms()) <= 0:
+                break
+            time.sleep(0.02)
+
     def toggle_ball_hand(self):
             if not self.toggle_ball:
-                self.ball_hand.move_to(BALL_HAND_OPEN_DEGREE, SERVO_SPEED)
+                self.move_to(self.ball_hand, BALL_HAND_OPEN_DEGREE)
                 self.toggle_ball = True
             else:
-                self.ball_hand.move_to(0, SERVO_SPEED)
+                self.move_to(self.ball_hand, 0)
                 self.toggle_ball = False
     
             
@@ -77,7 +86,7 @@ class Conveyor:
         if reverse:
             power_expand_board.set_power(self.ball_shooter, -100)
             power_expand_board.set_power(self.ball_conveyor, -100)
-            power_expand_board.set_power(self.sixseven, 30)
+            power_expand_board.set_power(self.sixseven, -30)
         else:
             power_expand_board.set_power(self.ball_shooter, 100)
             power_expand_board.set_power(self.ball_conveyor, 100)
@@ -86,8 +95,7 @@ class Conveyor:
     def shooter_convey_stop(self):
         power_expand_board.set_power(self.ball_shooter, 0)
         power_expand_board.set_power(self.ball_conveyor, 0)
-        # ถ้าเปิด river feeder อยู่ ให้ sixseven หมุนต่อ
-        power_expand_board.set_power(self.sixseven, -60 if self.toggle_updown else 0)
+        power_expand_board.set_power(self.sixseven, -60 if self.toggle_updown or self.sweep_cone_toggle else 0)
 
     def block_convey(self, reverse=False):
             if reverse:
@@ -117,39 +125,61 @@ class Conveyor:
             power_expand_board.set_power(self.hand, -80)
                     
     def stop_hand(self):
-        # ถ้าเปิด river feeder อยู่ ให้ hand หมุนต่อ
         power_expand_board.set_power(self.hand, 0)
                 
     def toggle_block_hand(self):
         if not self.toggle_block:
-            self.block_hand.move_to(BLOCK_HAND_OPEN_DEGREE, SERVO_SPEED)
+            self.move_to(self.block_hand, BLOCK_HAND_OPEN_DEGREE)
             self.toggle_block = True
         else:
-            self.block_hand.move_to(0, SERVO_SPEED)
+            self.move_to(self.block_hand, 0)
             self.toggle_block = False
-    
+
     def lift_hand(self, reverse=False):
+        self.lift_hand_manual = True
         if reverse:
             self.lift_hand_servo.set_power(-40)
         else:
             self.lift_hand_servo.set_power(40)
-            
+
     def stop_lift_hand(self):
-        self.lift_hand_servo.set_power(0)
-        
-    def toggle_river_feeder(self):
+        if self.lift_hand_manual:
+            self.lift_hand_servo.set_power(0)
+            self.lift_hand_manual = False
+
+    def toggle_river_feeder(self, lift_degree):
+        if self.sweep_cone_toggle:
+            self.toggle_river_cone()
         if not self.toggle_updown:
-            self.lift_hand_servo.move_to(289, SERVO_SPEED)
+            self.move_to(self.lift_hand_servo, lift_degree)
+            self.move_to(self.ball_hand, 100)
             self.lift_cone()
-            time.sleep(1.2)
-            self.ball_hand.move_to(105, SERVO_SPEED)
+            time.sleep(1.05)
+            self.stop_lift()
             power_expand_board.set_power(self.sixseven, -60)
             power_expand_board.set_power(self.ball_feeder, -80)
             self.toggle_updown = True
+            self.toggle_ball = False
         else:
-            self.lift_hand_servo.move_to(200, SERVO_SPEED)
             power_expand_board.set_power(self.sixseven, 0)
             power_expand_board.set_power(self.ball_feeder, 0)
-            time.sleep(1.5)
-            self.ball_hand.move_to(0, SERVO_SPEED)
+            self.move_to(self.lift_hand_servo, 0)
+            self.move_to(self.ball_hand, 0)
             self.toggle_updown = False
+            self.toggle_ball = False
+            
+    def toggle_river_cone(self):
+        if self.toggle_ball:
+            self.toggle_ball_hand()
+        if self.toggle_updown:
+            self.toggle_river_feeder(lift_degree = 400)
+        if not self.sweep_cone_toggle:
+            self.lift_cone()
+            time.sleep(1.05)
+            self.stop_lift()
+            self.sweep_cone_toggle = True
+            self.move_to(self.lift_hand_servo, 50)
+            power_expand_board.set_power(self.sixseven, -60)
+        else:
+            power_expand_board.set_power(self.sixseven, 0)
+            self.sweep_cone_toggle = False

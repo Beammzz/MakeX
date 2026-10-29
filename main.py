@@ -59,11 +59,11 @@ class Guzzchan:
         if self._pressed("≡"):
             self.conveyor.toggle_block_hand()
             
-        if self._pressed("Down"):
+        if self._pressed("R_Thumb"):
             self.current_mode = not self.current_mode
             
-        if self._pressed("N4"):
-            self.conveyor.toggle_river_feeder()
+        if self._pressed("N4") and not self.current_mode:
+            self.conveyor.toggle_river_feeder(lift_degree = 400)
 
 
         if gamepad.is_key_pressed("L2") or gamepad.is_key_pressed("R2"):
@@ -91,13 +91,6 @@ class Guzzchan:
         else:
             self.conveyor.stop_lift()
             
-        if gamepad.is_key_pressed("N2") and self.current_mode:
-            self.conveyor.lift_hand(reverse=True)
-        elif gamepad.is_key_pressed("N3") and self.current_mode:
-            self.conveyor.lift_hand()
-        else:   
-            self.conveyor.stop_lift_hand()
-            
         if gamepad.is_key_pressed("Left"):
             self.conveyor.hand_hold()
             
@@ -105,6 +98,16 @@ class Guzzchan:
             self.conveyor.hand_hold(reverse=True)
         else:
             self.conveyor.stop_hand()
+            
+        if gamepad.is_key_pressed("N2") and self.current_mode:
+            self.conveyor.lift_hand(reverse=True)
+        elif gamepad.is_key_pressed("N3") and self.current_mode:
+            self.conveyor.lift_hand()
+        else:   
+            self.conveyor.stop_lift_hand()
+            
+        if self._pressed("N4") and self.current_mode:
+            self.conveyor.toggle_river_cone()
             
     def auto(self):
         #auto_mode(self, "R") # "L" or "R"

@@ -41,8 +41,14 @@ import time
 def _bootstrap():
     """Make the extension's scripts/ folder importable (see the docstring)."""
     here = os.path.dirname(os.path.abspath(__file__))
-    scripts = os.environ.get('NOVAPI_SCRIPTS') or os.path.abspath(
-        os.path.join(here, '..', '..', 'NovaPi', 'scripts'))
+    scripts = os.environ.get('NOVAPI_SCRIPTS')
+    if not scripts:
+        # ใช้โฟลเดอร์ scripts ของ extension NovaPi Companion ที่ติดตั้งไว้ (เวอร์ชันล่าสุด)
+        ext = os.path.join(os.path.expanduser('~'), '.vscode', 'extensions')
+        found = sorted(d for d in os.listdir(ext)
+                       if d.startswith('makeblock-community.novapi-companion-')) if os.path.isdir(ext) else []
+        scripts = (os.path.join(ext, found[-1], 'scripts') if found else
+                   os.path.abspath(os.path.join(here, '..', '..', 'NovaPi', 'scripts')))
     if not os.path.isfile(os.path.join(scripts, 'live.py')):
         sys.exit('Could not find the NovaPi helper scripts in %s\n'
                  'Set NOVAPI_SCRIPTS to the extension\'s scripts folder.' % scripts)
