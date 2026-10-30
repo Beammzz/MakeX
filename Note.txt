@@ -1,11 +1,4 @@
-up
+cone -153
 
-down
+block 19
 
-
-7cm
-200cm
-
-91 down
-
-300 up

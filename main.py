@@ -47,7 +47,7 @@ class Guzzchan:
         # Wheel controller
         self.wheel.holomix(lx, ly, rx)
 
-        if self._pressed("N1"):
+        if self._pressed("N1") and not self.current_mode:
             self.conveyor.toggle_ball_conveyor()
 
         if self._pressed("+"):
@@ -59,11 +59,15 @@ class Guzzchan:
         if self._pressed("≡"):
             self.conveyor.toggle_block_hand()
             
+        if self._pressed("Down"):
+            self.conveyor.toggle_basket_block()
+            
         if self._pressed("R_Thumb"):
             self.current_mode = not self.current_mode
             
         if self._pressed("N4") and not self.current_mode:
-            self.conveyor.toggle_river_feeder(lift_degree = 400)
+            self.conveyor.toggle_river_cone()
+            
 
 
         if gamepad.is_key_pressed("L2") or gamepad.is_key_pressed("R2"):
@@ -107,12 +111,15 @@ class Guzzchan:
             self.conveyor.stop_lift_hand()
             
         if self._pressed("N4") and self.current_mode:
-            self.conveyor.toggle_river_cone()
+            pass
+        
+        if self._pressed("N1") and self.current_mode:
+            self.conveyor.toggle_basket_block()
             
     def auto(self):
         auto_mode(self, "R") # "L" or "R"
         
-
+        
 
 robot = Guzzchan()
             
