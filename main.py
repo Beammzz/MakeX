@@ -110,8 +110,7 @@ class Guzzchan:
             self.conveyor.toggle_river_cone()
             
     def auto(self):
-        #auto_mode(self, "R") # "L" or "R"
-        pass
+        auto_mode(self, "R") # "L" or "R"
         
 
 

@@ -8,7 +8,7 @@ LOWER_RIGHT = "M4"
 REVERSE = [1, 1, 1, -1]
 
 # ใช้ใน Auto
-SLOW_SPEED = 40
+SLOW_SPEED = 35
 NORMAL_SPEED = 75
 
 MAX_SPEED = 80
