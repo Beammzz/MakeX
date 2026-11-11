@@ -47,7 +47,8 @@ class Guzzchan:
         # Wheel controller
         self.wheel.holomix(lx, ly, rx)
 
-        if self._pressed("N1") and not self.current_mode:
+        # N1 ใช้ได้ทั้งสองโหมด
+        if self._pressed("N1"):
             self.conveyor.toggle_ball_conveyor()
 
         if self._pressed("+"):
@@ -67,6 +68,7 @@ class Guzzchan:
             
         if self._pressed("N4") and not self.current_mode:
             self.conveyor.toggle_river_cone()
+        # (N4 ในโหมด R_Thumb ยังไม่ได้ใช้)
             
 
 
@@ -109,13 +111,7 @@ class Guzzchan:
             self.conveyor.lift_hand()
         else:   
             self.conveyor.stop_lift_hand()
-            
-        if self._pressed("N4") and self.current_mode:
-            pass
-        
-        if self._pressed("N1") and self.current_mode:
-            self.conveyor.toggle_basket_block()
-            
+
     def auto(self):
         auto_mode(self, "R") # "L" or "R"
         

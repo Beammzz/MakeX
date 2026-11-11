@@ -194,11 +194,10 @@ class Conveyor:
                 self.toggle_river_feeder(lift_degree = 400)
             if self.sweep_cone_toggle:
                 self.toggle_river_cone()
-            if not self.sweep_cone_toggle:
-                self.lift_cone(reverse=True)
-                time.sleep(1)
+            if not self.sweep_block_toggle:
+                # ยกลิฟขึ้นอย่างเดียว ไม่ลดลงก่อน
                 self.lift_cone()
-                time.sleep(0.5) 
+                time.sleep(0.5)
                 self.stop_lift()
                 self.move_to(self.lift_hand_servo, 19)
                 power_expand_board.set_power(self.sixseven, -60)
