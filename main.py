@@ -50,6 +50,9 @@ class Guzzchan:
         # N1 ใช้ได้ทั้งสองโหมด
         if self._pressed("N1"):
             self.conveyor.toggle_ball_conveyor()
+            
+        if self._pressed("Up"):
+            self.conveyor.sweep_ball()
 
         if self._pressed("+"):
             self.shooter.toggle_shooter()  

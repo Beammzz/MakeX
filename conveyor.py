@@ -16,6 +16,7 @@ DC_BLOCK_B = "DC3"
 DC_CONE_LIFT = "DC8"
 DC_HAND = "DC5"
 
+LOWER_HAND_INDEX = "INDEX1"
 LIFT_HAND_INDEX = "INDEX2"
 BLOCK_HAND_INDEX = "INDEX3"
 
@@ -30,6 +31,7 @@ class Conveyor:
         self.sixseven = DC_SIXSEVEN
         
         # Servo
+        self.lower_hand_servo = smartservo_class(SERVO, LOWER_HAND_INDEX)
         self.lift_hand_servo = smartservo_class(SERVO, LIFT_HAND_INDEX)
         self.block_hand = smartservo_class(SERVO, BLOCK_HAND_INDEX)
 
@@ -40,6 +42,7 @@ class Conveyor:
         self.lift_hand_manual = False
         self.sweep_cone_toggle = False
         self.sweep_block_toggle = False
+        self.sweep_ball_toggle = False
 
         # Block convey
         self.block_a = DC_BLOCK_A
@@ -68,6 +71,14 @@ class Conveyor:
             power_expand_board.set_power(self.ball_conveyor, 0)
             power_expand_board.set_power(self.sixseven, 0)
             self.ball_conveyor_toggle = False
+            
+    def sweep_ball(self):
+        if not self.sweep_ball_toggle:
+            self.move_to(self.lower_hand_servo, 111, SERVO_SPEED)
+            self.sweep_ball_toggle = True
+        else:
+            self.move_to(self.lower_hand_servo, 0, SERVO_SPEED)
+            self.sweep_ball_toggle = False
             
     def shooter_convey(self, reverse=False):
         if reverse:
@@ -98,12 +109,12 @@ class Conveyor:
         
     def lift_cone(self, reverse=False):
         if reverse:
-            power_expand_board.set_power(self.cone_lift, -85 )
-        else:
             power_expand_board.set_power(self.cone_lift, 85)
+        else:
+            power_expand_board.set_power(self.cone_lift, -85)
             
     def stop_lift(self):
-            power_expand_board.set_power(self.cone_lift, 5)
+            power_expand_board.set_power(self.cone_lift, -5)
             
     def hand_hold(self, reverse=False):
         if reverse:
