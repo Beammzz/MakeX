@@ -3,8 +3,6 @@ from mbuild import power_expand_board
 
 def auto_mode(robot, side="L"):
     if side == "R":
-        if (robot.conveyor.ball_hand.get_value("angle") > 10):
-            robot.conveyor.toggle_ball_hand()
         robot.conveyor.toggle_river_cone()
         time.sleep(0.65)
         robot.wheel.move_backward()
@@ -21,6 +19,7 @@ def auto_mode(robot, side="L"):
         time.sleep(0.55)
         robot.wheel.move_slow_forward()
         time.sleep(3)
+        # debug ชั่วคราว: ดูว่าเซอร์โวยกถึงไหม
         robot.conveyor.move_to(robot.conveyor.lift_hand_servo, 50)
         robot.wheel.move_slow_backward()
         time.sleep(0.4)

@@ -54,13 +54,12 @@ class Guzzchan:
         if self._pressed("+"):
             self.shooter.toggle_shooter()  
             
-        if self._pressed("Up"):
-            self.conveyor.toggle_ball_hand()
-            
         if self._pressed("≡"):
             self.conveyor.toggle_block_hand()
             
-        if self._pressed("Down"):
+        # ไม่ให้ Down ทำงานตอนกด Left/Right อยู่ (กันกดลูกศรเฉียง)
+        hand_pressed = gamepad.is_key_pressed("Left") or gamepad.is_key_pressed("Right")
+        if self._pressed("Down") and not hand_pressed:
             self.conveyor.toggle_basket_block()
             
         if self._pressed("R_Thumb"):
@@ -116,12 +115,12 @@ class Guzzchan:
         auto_mode(self, "R") # "L" or "R"
         
         
+        
 
 robot = Guzzchan()
             
 while True:
     print(robot.conveyor.lift_hand_servo.get_value("angle"))
-    print(robot.conveyor.ball_hand.get_value("angle"))
     if power_manage_module.is_auto_mode():
         robot.auto()
         while power_manage_module.is_auto_mode():

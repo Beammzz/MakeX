@@ -1,8 +1,8 @@
 from mbuild.encoder_motor import encoder_motor_class
 
 UPPER_LEFT = "M1"
-LOWER_LEFT = "M2"
-UPPER_RIGHT = "M5"
+LOWER_LEFT = "M6"
+UPPER_RIGHT = "M2"
 LOWER_RIGHT = "M4"
 
 REVERSE = [1, 1, 1, -1]

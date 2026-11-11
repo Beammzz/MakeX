@@ -2,26 +2,23 @@ from mbuild import power_expand_board
 from mbuild.smartservo import smartservo_class
 import time
 
-SERVO = "M6"
+SERVO = "M5"
 SERVO_SPEED = 30
 
-DC_BALL_SHOOTER = "DC2"
-DC_BALL_CONVEYOR = "DC3"
-DC_BALL_FEEDER = "DC8"
-DC_SIXSEVEN = "DC6"
+DC_BALL_SHOOTER = "DC4"
+DC_BALL_CONVEYOR = "DC1"
+DC_BALL_FEEDER = "DC2"
+DC_SIXSEVEN = "DC7"
 
-DC_BLOCK_A = "DC4"
-DC_BLOCK_B = "DC5"
+DC_BLOCK_A = "DC6"
+DC_BLOCK_B = "DC3"
 
-DC_CONE_LIFT = "DC1"
-DC_HAND = "DC7"
-
-BALL_HAND_INDEX = "INDEX1"
-BALL_HAND_OPEN_DEGREE = 112
+DC_CONE_LIFT = "DC8"
+DC_HAND = "DC5"
 
 LIFT_HAND_INDEX = "INDEX2"
-
 BLOCK_HAND_INDEX = "INDEX3"
+
 BLOCK_HAND_OPEN_DEGREE = -46
 
 class Conveyor:
@@ -35,11 +32,9 @@ class Conveyor:
         # Servo
         self.lift_hand_servo = smartservo_class(SERVO, LIFT_HAND_INDEX)
         self.block_hand = smartservo_class(SERVO, BLOCK_HAND_INDEX)
-        self.ball_hand = smartservo_class(SERVO, BALL_HAND_INDEX)
-        
+
         # State
         self.ball_conveyor_toggle = False
-        self.toggle_ball = False
         self.toggle_block = False
         self.toggle_updown = False
         self.lift_hand_manual = False
@@ -62,15 +57,6 @@ class Conveyor:
                 break
             time.sleep(0.02)
 
-    def toggle_ball_hand(self):
-            if not self.toggle_ball:
-                self.move_to(self.ball_hand, BALL_HAND_OPEN_DEGREE)
-                self.toggle_ball = True
-            else:
-                self.move_to(self.ball_hand, 0)
-                self.toggle_ball = False
-    
-            
     def toggle_ball_conveyor(self):
         if not self.ball_conveyor_toggle:
             power_expand_board.set_power(self.ball_feeder, -100)
@@ -112,9 +98,9 @@ class Conveyor:
         
     def lift_cone(self, reverse=False):
         if reverse:
-            power_expand_board.set_power(self.cone_lift, -63)
+            power_expand_board.set_power(self.cone_lift, -85 )
         else:
-            power_expand_board.set_power(self.cone_lift, 63)
+            power_expand_board.set_power(self.cone_lift, 85)
             
     def stop_lift(self):
             power_expand_board.set_power(self.cone_lift, 5)
@@ -153,32 +139,26 @@ class Conveyor:
             self.toggle_river_cone()
         if not self.toggle_updown:
             self.move_to(self.lift_hand_servo, lift_degree)
-            self.move_to(self.ball_hand, 100)
             self.lift_cone()
-            time.sleep(1.05)
+            time.sleep(0.66)
             self.stop_lift()
             power_expand_board.set_power(self.sixseven, -60)
             power_expand_board.set_power(self.ball_feeder, -80)
             self.toggle_updown = True
-            self.toggle_ball = False
         else:
             power_expand_board.set_power(self.sixseven, 0)
             power_expand_board.set_power(self.ball_feeder, 0)
             self.move_to(self.lift_hand_servo, 0)
-            self.move_to(self.ball_hand, 0)
             self.toggle_updown = False
-            self.toggle_ball = False
-            
+
     def toggle_river_cone(self):
-        if self.toggle_ball:
-            self.toggle_ball_hand()
         if self.toggle_updown:
             self.toggle_river_feeder(lift_degree = 400)
         if self.sweep_block_toggle:
             self.toggle_basket_block()
         if not self.sweep_cone_toggle:
             self.lift_cone()
-            time.sleep(1)
+            time.sleep(0.63)
             self.stop_lift()
             self.sweep_cone_toggle = True
             self.move_to(self.lift_hand_servo, -153)
@@ -188,8 +168,6 @@ class Conveyor:
             self.sweep_cone_toggle = False
             
     def toggle_basket_block(self):
-            if self.toggle_ball:
-                self.toggle_ball_hand()
             if self.toggle_updown:
                 self.toggle_river_feeder(lift_degree = 400)
             if self.sweep_cone_toggle:
@@ -197,9 +175,9 @@ class Conveyor:
             if not self.sweep_block_toggle:
                 # ยกลิฟขึ้นอย่างเดียว ไม่ลดลงก่อน
                 self.lift_cone()
-                time.sleep(0.5)
+                time.sleep(0.32)
                 self.stop_lift()
-                self.move_to(self.lift_hand_servo, 19)
+                self.move_to(self.lift_hand_servo, 363)
                 power_expand_board.set_power(self.sixseven, -60)
                 self.sweep_block_toggle = True
             else:
