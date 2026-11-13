@@ -1,4 +1,5 @@
 from mbuild.encoder_motor import encoder_motor_class
+import novapi
 
 UPPER_LEFT = "M1"
 LOWER_LEFT = "M6"
@@ -39,19 +40,29 @@ class Wheel:
             return 0
         return value
 
-    def holomix(self, lx, ly, rx):
-        lx = self._dz(lx)
-        ly = self._dz(ly)
-        rx = self._dz(rx)
+    def holomix(self, lx, ly, rx, deadzone = True):
+        if deadzone:
+            lx = self._dz(lx)
+            ly = self._dz(ly)
+            rx = self._dz(rx)
         if lx == 0 and ly == 0 and rx == 0:
             self.stop()
             return
+        
+        # Gyro Headlocking
+        if (rx != 0):
+            novapi.reset_rotation('z')
 
         ty = TRIM_FORWARD if ly >= 0 else TRIM_BACKWARD
         tx = TRIM_RIGHT if lx >= 0 else TRIM_LEFT
         powers = []
         for i in range(4):
-            powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i])
+            if i == 1 and novapi.get_yaw() > 2.0:
+                powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i] + 5)
+            elif i == 3 and novapi.get_yaw() < -2.0:
+                powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i] + 5)
+            else:
+                powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i])
 
         peak = max(abs(p) for p in powers)
         scale = min(1, self.max_speed / peak)
@@ -59,40 +70,40 @@ class Wheel:
             self.motors[i].set_power(int(powers[i] * scale) * REVERSE[i])
 
     def move_forward(self):
-        self.holomix(0, self.normal_speed, 0)
+        self.holomix(0, self.normal_speed, 0, deadzone=False)
 
     def move_backward(self):
-        self.holomix(0, -self.normal_speed, 0)
+        self.holomix(0, -self.normal_speed, 0, deadzone=False)
 
     def move_left(self):
-        self.holomix(-self.normal_speed, 0, 0)
+        self.holomix(-self.normal_speed, 0, 0, deadzone=False)
 
     def move_right(self):
-        self.holomix(self.normal_speed, 0, 0)
+        self.holomix(self.normal_speed, 0, 0, deadzone=False)
 
     def move_slow_forward(self):
-        self.holomix(0, self.slow_speed, 0)
+        self.holomix(0, self.slow_speed, 0, deadzone=False)
 
     def move_slow_backward(self):
-        self.holomix(0, -self.slow_speed, 0)
+        self.holomix(0, -self.slow_speed, 0, deadzone=False)
 
     def move_slow_left(self):
-        self.holomix(-self.slow_speed, 0, 0)
+        self.holomix(-self.slow_speed, 0, 0, deadzone=False)
 
     def move_slow_right(self):
-        self.holomix(self.slow_speed, 0, 0)
+        self.holomix(self.slow_speed, 0, 0, deadzone=False)
 
     def rotate_left(self):
-        self.holomix(0, 0, -self.normal_speed)
+        self.holomix(0, 0, -self.normal_speed, deadzone=False)
 
     def rotate_right(self):
-        self.holomix(0, 0, self.normal_speed)
+        self.holomix(0, 0, self.normal_speed, deadzone=False)
 
     def rotate_slow_left(self):
-        self.holomix(0, 0, -self.slow_speed)
+        self.holomix(0, 0, -self.slow_speed, deadzone=False)
 
     def rotate_slow_right(self):
-        self.holomix(0, 0, self.slow_speed)
+        self.holomix(0, 0, self.slow_speed, deadzone=False)
 
     def stop(self):
         for i in range(4):

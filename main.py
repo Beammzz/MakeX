@@ -45,7 +45,7 @@ class Guzzchan:
         rx = gamepad.get_joystick("Rx")
 
         # Wheel controller
-        self.wheel.holomix(lx, ly, rx)
+        self.wheel.holomix(lx, ly, rx, deadzone=True)
 
         # N1 ใช้ได้ทั้งสองโหมด
         if self._pressed("N1"):
