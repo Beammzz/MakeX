@@ -34,6 +34,7 @@ class Wheel:
         self.slide = [-1, 1, 1, -1]
         self.rotate = [1, 1, -1, -1]
         self.deadzone = 10
+        novapi.reset_rotation('z')
 
     def _dz(self, value):
         if abs(value) < self.deadzone:
@@ -47,22 +48,22 @@ class Wheel:
             rx = self._dz(rx)
         if lx == 0 and ly == 0 and rx == 0:
             self.stop()
+            novapi.reset_rotation('z')
             return
         
         # Gyro Headlocking
-        if (rx != 0):
+        if rx != 0:
             novapi.reset_rotation('z')
+        else:
+            yaw = novapi.get_yaw()
+            if abs(yaw) > 2.0:
+                rx = -yaw * 2.0
 
         ty = TRIM_FORWARD if ly >= 0 else TRIM_BACKWARD
         tx = TRIM_RIGHT if lx >= 0 else TRIM_LEFT
         powers = []
         for i in range(4):
-            if i == 1 and novapi.get_yaw() > 2.0:
-                powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i] + 5)
-            elif i == 3 and novapi.get_yaw() < -2.0:
-                powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i] + 5)
-            else:
-                powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i])
+            powers.append(ly * ty[i] + lx * tx[i] * self.slide[i] - rx * self.rotate[i])
 
         peak = max(abs(p) for p in powers)
         scale = min(1, self.max_speed / peak)
