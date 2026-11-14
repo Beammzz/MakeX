@@ -52,7 +52,7 @@ class Wheel:
             return
         
         # Gyro Headlocking
-        if rx != 0:
+        if rx != 0 or ly != 0 or lx >= 40:
             novapi.reset_rotation('z')
         else:
             yaw = novapi.get_yaw()
