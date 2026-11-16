@@ -35,3 +35,7 @@ method names, parameter ranges, and sign conventions instead of guessing.
 ## Deploy
 VS Code build task `NovaPi: Deploy & Serial Monitor` uploads `main.py` over COM
 and opens the REPL. The NovaPi Companion extension is optional but recommended.
+
+
+## Smart servo recovery (M5)
+A smart servo on M5 is stuck in firmware update mode. Read `docs/servo_recovery.md` before touching the M5 chain. NEVER send `0x61` subtypes above 3 to any servo.

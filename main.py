@@ -23,7 +23,7 @@ print(r"""
 """)
 
 # หุ่นยบต์
-BOARD_SLEEP_TIME = 0.05
+BOARD_SLEEP_TIME = 0.02
             
 class Guzzchan:
     def __init__(self) -> None:
